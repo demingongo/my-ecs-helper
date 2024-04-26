@@ -12,13 +12,13 @@ import (
 )
 
 func selectJSONFile(title string, currentDirectory string) string {
-	tm, _ := NewFilepickercharm(filepickercharmConfig{
+	tm, _ := NewFilepickerModelProgram(filepickerModelConfig{
 		allowedTypes:     []string{".json"},
 		currentDirectory: currentDirectory,
 		enableFastSelect: true,
 		title:            title,
 	}).Run()
-	mm := tm.(filepickercharmModel)
+	mm := tm.(filepickerModel)
 
 	return mm.selectedFile
 }

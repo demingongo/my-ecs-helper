@@ -10,14 +10,14 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type filepickercharmConfig struct {
+type filepickerModelConfig struct {
 	title            string
 	currentDirectory string
 	allowedTypes     []string
 	enableFastSelect bool
 }
 
-type filepickercharmModel struct {
+type filepickerModel struct {
 	filepicker       filepicker.Model
 	selectedFile     string
 	quitting         bool
@@ -34,11 +34,11 @@ func clearErrorAfter(t time.Duration) tea.Cmd {
 	})
 }
 
-func (m filepickercharmModel) Init() tea.Cmd {
+func (m filepickerModel) Init() tea.Cmd {
 	return m.filepicker.Init()
 }
 
-func (m filepickercharmModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m filepickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -75,7 +75,7 @@ func (m filepickercharmModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m filepickercharmModel) View() string {
+func (m filepickerModel) View() string {
 	if m.quitting {
 		return ""
 	}
@@ -96,7 +96,7 @@ func (m filepickercharmModel) View() string {
 	return s.String()
 }
 
-func NewFilepickercharm(config filepickercharmConfig) *tea.Program {
+func NewFilepickerModel(config filepickerModelConfig) filepickerModel {
 	var dir string
 	if len(config.currentDirectory) > 0 {
 		dir = config.currentDirectory
@@ -108,11 +108,17 @@ func NewFilepickercharm(config filepickercharmConfig) *tea.Program {
 	fp.AllowedTypes = config.allowedTypes
 	fp.CurrentDirectory = dir
 
-	m := filepickercharmModel{
-		filepicker: fp,
+	m := filepickerModel{
+		filepicker:       fp,
+		enableFastSelect: config.enableFastSelect,
+		title:            config.title,
 	}
-	m.enableFastSelect = config.enableFastSelect
-	m.title = config.title
+
+	return m
+}
+
+func NewFilepickerModelProgram(config filepickerModelConfig) *tea.Program {
+	m := NewFilepickerModel(config)
 
 	return tea.NewProgram(&m)
 }
