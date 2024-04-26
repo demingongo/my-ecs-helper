@@ -1,111 +1,24 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
-	"strings"
-	"time"
 
-	"github.com/charmbracelet/bubbles/filepicker"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 )
 
-type model struct {
-	filepicker       filepicker.Model
-	selectedFile     string
-	quitting         bool
-	err              error
-	enableFastSelect bool
-	title            string
-}
-
-type clearErrorMsg struct{}
-
-func clearErrorAfter(t time.Duration) tea.Cmd {
-	return tea.Tick(t, func(_ time.Time) tea.Msg {
-		return clearErrorMsg{}
-	})
-}
-
-func (m model) Init() tea.Cmd {
-	return m.filepicker.Init()
-}
-
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			m.quitting = true
-			return m, tea.Quit
-		}
-	case clearErrorMsg:
-		m.err = nil
-	}
-
-	var cmd tea.Cmd
-	m.filepicker, cmd = m.filepicker.Update(msg)
-
-	// Did the user select a file?
-	if didSelect, path := m.filepicker.DidSelectFile(msg); didSelect {
-		// Get the path of the selected file.
-		m.selectedFile = path
-		if m.enableFastSelect {
-			m.quitting = true
-			return m, tea.Quit
-		}
-	}
-
-	// Did the user select a disabled file?
-	// This is only necessary to display an error to the user.
-	if didSelect, path := m.filepicker.DidSelectDisabledFile(msg); didSelect {
-		// Let's clear the selectedFile and display an error.
-		m.err = errors.New(path + " is not valid.")
-		m.selectedFile = ""
-		return m, tea.Batch(cmd, clearErrorAfter(2*time.Second))
-	}
-
-	return m, cmd
-}
-
-func (m model) View() string {
-	if m.quitting {
-		return ""
-	}
-	var s strings.Builder
-	s.WriteString("\n  ")
-	if m.err != nil {
-		s.WriteString(m.filepicker.Styles.DisabledFile.Render(m.err.Error()))
-	} else if m.selectedFile == "" {
-		title := "Pick a file:"
-		if len(m.title) > 0 {
-			title = m.title
-		}
-		s.WriteString(title)
-	} else {
-		s.WriteString("Selected file: " + m.filepicker.Styles.Selected.Render(m.selectedFile))
-	}
-	s.WriteString("\n\n" + m.filepicker.View() + "\n")
-	return s.String()
-}
-
-func selectRuleFile(title string) string {
-	fp := filepicker.New()
-	fp.AllowedTypes = []string{".json"}
-	fp.CurrentDirectory, _ = os.Getwd()
-
-	m := model{
-		filepicker: fp,
-	}
-	m.enableFastSelect = true
-	m.title = title
-	tm, _ := tea.NewProgram(&m).Run()
-	mm := tm.(model)
+func selectJSONFile(title string, currentDirectory string) string {
+	tm, _ := NewFilepickercharm(filepickercharmConfig{
+		allowedTypes:     []string{".json"},
+		currentDirectory: currentDirectory,
+		enableFastSelect: true,
+		title:            title,
+	}).Run()
+	mm := tm.(filepickercharmModel)
 
 	return mm.selectedFile
 }
@@ -202,8 +115,7 @@ func askTargetGroup(logger *log.Logger) string {
 	return targetGroupArn
 }
 
-func askRules(logger *log.Logger, targetGroup string) {
-
+func askRules(logger *log.Logger) []string {
 	var ok bool
 	var files []string
 	err := confirmForm("Create rules?", &ok).Run()
@@ -212,13 +124,15 @@ func askRules(logger *log.Logger, targetGroup string) {
 	}
 
 	if ok {
+		var searchDir string
 		for i := 0; i < 10; i++ {
-			file := selectRuleFile(fmt.Sprintf("Pick a file (%d):", len(files)))
+			file := selectJSONFile(fmt.Sprintf("Pick a file (%d/10):", len(files)), searchDir)
 			if len(file) > 0 {
 				if slices.Contains(files, file) {
 					break
 				} else {
 					files = append(files, file)
+					searchDir = filepath.Dir(file)
 				}
 			} else {
 				break
@@ -226,8 +140,22 @@ func askRules(logger *log.Logger, targetGroup string) {
 		}
 	}
 
-	fmt.Println(files)
+	return files
+}
 
+func askService(logger *log.Logger) string {
+	var ok bool = true
+	var value string
+	err := confirmForm("Create a service?", &ok).Run()
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	if ok {
+		value = selectJSONFile("", "")
+	}
+
+	return value
 }
 
 func main() {
@@ -244,13 +172,23 @@ func main() {
 	logger := log.New(os.Stderr)
 	logger.SetStyles(styles)
 
-	targetGroup := askTargetGroup(logger)
+	var (
+		targetGroup string
+		rulesFiles  []string
+		serviceFile string
+	)
 
-	logger.Info("Target group: " + targetGroup)
+	targetGroup = askTargetGroup(logger)
 
 	if len(targetGroup) > 0 {
-		askRules(logger, targetGroup)
+		rulesFiles = askRules(logger)
 	}
+
+	serviceFile = askService(logger)
+
+	logger.Info("Target group:", targetGroup)
+	logger.Info("Rules:", rulesFiles)
+	logger.Info("Service:", serviceFile)
 
 	fmt.Println("Done!")
 }
