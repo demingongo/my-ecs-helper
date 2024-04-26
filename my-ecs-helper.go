@@ -186,9 +186,9 @@ func main() {
 
 	serviceFile = askService(logger)
 
-	logger.Info("Target group:", targetGroup)
-	logger.Info("Rules:", rulesFiles)
-	logger.Info("Service:", serviceFile)
+	logger.Info(fmt.Sprintf("Target group: %s", targetGroup))
+	logger.Info(fmt.Sprintf("Rules: %s", rulesFiles))
+	logger.Info(fmt.Sprintf("Service: %s", serviceFile))
 
 	fmt.Println("Done!")
 }
