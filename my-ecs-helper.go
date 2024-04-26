@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,18 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 )
+
+func readJSONFile[T comparable](filepath string) (map[T]interface{}, error) {
+	var res map[T]interface{}
+	content, err := os.ReadFile(filepath)
+	if err != nil {
+		return res, err
+	}
+
+	json.Unmarshal([]byte(content), &res)
+
+	return res, err
+}
 
 func selectJSONFile(title string, currentDirectory string) string {
 	tm, _ := NewFilepickerModelProgram(filepickerModelConfig{
@@ -189,6 +202,16 @@ func main() {
 	logger.Info(fmt.Sprintf("Target group: %s", targetGroup))
 	logger.Info(fmt.Sprintf("Rules: %s", rulesFiles))
 	logger.Info(fmt.Sprintf("Service: %s", serviceFile))
+
+	if len(serviceFile) > 0 {
+		content, err := readJSONFile[string](serviceFile)
+		if err != nil {
+			logger.Fatal("Could not load file:", err)
+		}
+
+		logger.Info(content["listener"])
+
+	}
 
 	fmt.Println("Done!")
 }
