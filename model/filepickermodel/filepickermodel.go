@@ -1,4 +1,4 @@
-package main
+package filepickermodel
 
 import (
 	"errors"
@@ -10,20 +10,20 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type filepickerModelConfig struct {
-	title            string
-	currentDirectory string
-	allowedTypes     []string
-	enableFastSelect bool
+type FilepickerModelConfig struct {
+	Title            string
+	CurrentDirectory string
+	AllowedTypes     []string
+	EnableFastSelect bool
 }
 
-type filepickerModel struct {
+type FilepickerModel struct {
 	filepicker       filepicker.Model
-	selectedFile     string
 	quitting         bool
 	err              error
 	enableFastSelect bool
 	title            string
+	SelectedFile     string
 }
 
 type clearErrorMsg struct{}
@@ -34,11 +34,11 @@ func clearErrorAfter(t time.Duration) tea.Cmd {
 	})
 }
 
-func (m filepickerModel) Init() tea.Cmd {
+func (m FilepickerModel) Init() tea.Cmd {
 	return m.filepicker.Init()
 }
 
-func (m filepickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m FilepickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -56,7 +56,7 @@ func (m filepickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Did the user select a file?
 	if didSelect, path := m.filepicker.DidSelectFile(msg); didSelect {
 		// Get the path of the selected file.
-		m.selectedFile = path
+		m.SelectedFile = path
 		if m.enableFastSelect {
 			m.quitting = true
 			return m, tea.Quit
@@ -68,14 +68,14 @@ func (m filepickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if didSelect, path := m.filepicker.DidSelectDisabledFile(msg); didSelect {
 		// Let's clear the selectedFile and display an error.
 		m.err = errors.New(path + " is not valid.")
-		m.selectedFile = ""
+		m.SelectedFile = ""
 		return m, tea.Batch(cmd, clearErrorAfter(2*time.Second))
 	}
 
 	return m, cmd
 }
 
-func (m filepickerModel) View() string {
+func (m FilepickerModel) View() string {
 	if m.quitting {
 		return ""
 	}
@@ -83,41 +83,41 @@ func (m filepickerModel) View() string {
 	s.WriteString("\n  ")
 	if m.err != nil {
 		s.WriteString(m.filepicker.Styles.DisabledFile.Render(m.err.Error()))
-	} else if m.selectedFile == "" {
+	} else if m.SelectedFile == "" {
 		title := "Pick a file:"
 		if len(m.title) > 0 {
 			title = m.title
 		}
 		s.WriteString(title)
 	} else {
-		s.WriteString("Selected file: " + m.filepicker.Styles.Selected.Render(m.selectedFile))
+		s.WriteString("Selected file: " + m.filepicker.Styles.Selected.Render(m.SelectedFile))
 	}
 	s.WriteString("\n\n" + m.filepicker.View() + "\n")
 	return s.String()
 }
 
-func NewFilepickerModel(config filepickerModelConfig) filepickerModel {
+func NewFilepickerModel(config FilepickerModelConfig) FilepickerModel {
 	var dir string
-	if len(config.currentDirectory) > 0 {
-		dir = config.currentDirectory
+	if len(config.CurrentDirectory) > 0 {
+		dir = config.CurrentDirectory
 	} else {
 		dir, _ = os.Getwd()
 	}
 
 	fp := filepicker.New()
-	fp.AllowedTypes = config.allowedTypes
+	fp.AllowedTypes = config.AllowedTypes
 	fp.CurrentDirectory = dir
 
-	m := filepickerModel{
+	m := FilepickerModel{
 		filepicker:       fp,
-		enableFastSelect: config.enableFastSelect,
-		title:            config.title,
+		enableFastSelect: config.EnableFastSelect,
+		title:            config.Title,
 	}
 
 	return m
 }
 
-func NewFilepickerModelProgram(config filepickerModelConfig) *tea.Program {
+func NewFilepickerModelProgram(config FilepickerModelConfig) *tea.Program {
 	m := NewFilepickerModel(config)
 
 	return tea.NewProgram(&m)
