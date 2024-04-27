@@ -55,7 +55,7 @@ func targetGroupSelectForm(value *string, confirm *bool) *huh.Form {
 				Title("Are you sure?").
 				Value(confirm),
 		),
-	).WithTheme(huh.ThemeCatppuccin())
+	).WithTheme(huh.ThemeDracula())
 
 	return form
 }
@@ -72,7 +72,7 @@ func targetGroupActionForm(value *int) *huh.Form {
 				).
 				Value(value),
 		),
-	).WithTheme(huh.ThemeCatppuccin())
+	).WithTheme(huh.ThemeDracula())
 
 	return form
 }
@@ -84,7 +84,7 @@ func confirmForm(title string, value *bool) *huh.Form {
 				Title(title).
 				Value(value),
 		),
-	).WithTheme(huh.ThemeCatppuccin())
+	).WithTheme(huh.ThemeDracula())
 
 	return form
 }
