@@ -32,12 +32,12 @@ func NewModel() Model {
 					Options(huh.NewOptions(1, 20, 9999)...).
 					Title("Choose your level"),
 			),
-		).WithTheme(huh.ThemeDracula()),
+		).WithTheme(huh.ThemeDracula()).
+			WithWidth(formWidth),
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	m.form.WithWidth(formWidth)
 	return m.form.Init()
 }
 
