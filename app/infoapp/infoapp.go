@@ -374,12 +374,25 @@ func max(a, b int) int {
 */
 
 const (
-	formWidth = 60
+	formWidth    = 60
+	summaryWidth = 38
 
 	width = 100
 )
 
 var (
+
+	// Summary block
+	summaryStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#874BFD")).
+		//Padding(1, 0).
+		BorderTop(true).
+		BorderLeft(true).
+		BorderRight(true).
+		BorderBottom(true).
+		Width(summaryWidth)
+
 	// Status Bar.
 
 	statusNugget = lipgloss.NewStyle().
@@ -477,23 +490,28 @@ func (m Model) View() string {
 
 	// Form
 	{
-		formView := m.form.View()
-		var style = lipgloss.NewStyle()
-		//Width(formWidth).
-		//Padding(2).
-		//Background(lipgloss.Color("0"))
-		var formBlock string = style.Render(formView)
+		var formView string
+		var summaryView string
 
-		/*
-			// "github.com/charmbracelet/lipgloss/table"
-			t := table.New().
-				Border(lipgloss.HiddenBorder()).
-				Row(formBlock, "SUMMARY")
+		// Form / Form
+		{
+			var style = lipgloss.NewStyle()
+			formView = style.Render(m.form.View())
+		}
 
-			return t.Render()
-		*/
+		// Form / Summary
+		{
+			var style = lipgloss.NewStyle().
+				PaddingLeft(1).
+				PaddingRight(1).
+				Background(lipgloss.Color("0")).
+				Foreground(lipgloss.Color("255"))
+			title := style.Render("SUMMARY")
 
-		doc.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, formBlock, "SUMMARY"))
+			summaryView = summaryStyle.Render(title)
+		}
+
+		doc.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, formView, summaryView))
 		doc.WriteString("\n\n")
 	}
 
@@ -503,10 +521,10 @@ func (m Model) View() string {
 
 		statusKey := statusStyle.Render("STATUS")
 		encoding := encodingStyle.Render("UTF-8")
-		fishCake := fishCakeStyle.Render("🍥 Fish Cake")
+		fishCake := fishCakeStyle.Render("💾 My ECS helper")
 		statusVal := statusText.Copy().
 			Width(width - w(statusKey) - w(encoding) - w(fishCake)).
-			Render("Ravishing")
+			Render("Normal")
 
 		bar := lipgloss.JoinHorizontal(lipgloss.Top,
 			statusKey,
