@@ -9,8 +9,8 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
-	"github.com/demingongo/my-ecs-helper/model/confirmmodel"
 	"github.com/demingongo/my-ecs-helper/model/filepickermodel"
+	formmmodel "github.com/demingongo/my-ecs-helper/model/formmodel"
 	"github.com/spf13/viper"
 	"golang.org/x/term"
 )
@@ -663,6 +663,51 @@ func generateTargetGroupDescription(name string, filepath string) string {
 	return r
 }
 
+func generateFirstSelectForm() *huh.Form {
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("What do we do:").
+				Key("targetgroup").
+				Options(
+					huh.NewOption("Create a target group", "create"),
+					huh.NewOption("Select a target group", "select"),
+					huh.NewOption("Other", "other"),
+				),
+
+			huh.NewConfirm().
+				Key("confirm").
+				Title("Are you sure?"),
+		),
+	).WithTheme(huh.ThemeDracula())
+
+	return form
+}
+
+/*
+func targetGroupSelectForm(value *string, confirm *bool) *huh.Form {
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Select a target group:").
+				Options(
+					huh.NewOption("dev-candidates", "arn:targetgroup/dev-candidates"),
+					huh.NewOption("dev-websites", "arn:targetgroup/dev-websites"),
+					huh.NewOption("prod-candidates", "arn:targetgroup/prod-candidates"),
+					huh.NewOption("prod-websites", "arn:targetgroup/prod-websites"),
+				).
+				Value(value),
+
+			huh.NewConfirm().
+				Title("Are you sure?").
+				Value(confirm),
+		),
+	).WithTheme(huh.ThemeDracula())
+
+	return form
+}
+*/
+
 func Run() {
 
 	var (
@@ -676,12 +721,46 @@ func Run() {
 
 	info := generateInfo(targetGroupDescription, rules, service)
 
-	m := confirmmodel.NewModel(confirmmodel.ConfirmModelConfig{
+	firstSelectForm := generateFirstSelectForm()
+	firstSelect := formmmodel.NewModel(formmmodel.ModelConfig{
+		Form:       firstSelectForm,
 		InfoBubble: info,
-		Title:      "Create a target group?",
-		Key:        "confirm-create-targetgroup",
 	})
-	tm, _ := tea.NewProgram(&m).Run()
+
+	tea.NewProgram(&firstSelect).Run()
+
+	if firstSelectForm.State == huh.StateCompleted && firstSelectForm.GetString("targetgroup") == "create" {
+		/*
+			m := confirmmodel.NewModel(confirmmodel.ConfirmModelConfig{
+				InfoBubble: info,
+				Title:      "Create a target group?",
+				Key:        "confirm-create-targetgroup",
+			})
+			tm, _ := tea.NewProgram(&m).Run()
+
+			mm := tm.(confirmmodel.Model)
+
+			if mm.State == huh.StateCompleted && mm.Confirmed {
+				info = generateInfo(targetGroupDescription, rules, service)
+				targetGroup = selectTargetGroupJSON(info)
+			}
+		*/
+
+		info = generateInfo(targetGroupDescription, rules, service)
+		targetGroup = selectTargetGroupJSON(info)
+
+		if targetGroup != "" {
+			tgConf := viper.New()
+			tgConf.SetConfigFile(targetGroup)
+			err := tgConf.ReadInConfig()
+			if err != nil {
+				logger.Fatal("Could not read file:", err)
+			}
+
+			targetGroupDescription = generateTargetGroupDescription(tgConf.GetString("targetGroupName"), targetGroup)
+		}
+	}
+
 	/*
 		mm := tm.(Model)
 
@@ -689,23 +768,6 @@ func Run() {
 			fmt.Printf("So yea basically, you selected: %s, Lvl. %d\n", mm.form.GetString("class"), mm.form.GetInt("level"))
 		}
 	*/
-	mm := tm.(confirmmodel.Model)
-
-	if mm.State == huh.StateCompleted && mm.Confirmed {
-		info = generateInfo(targetGroupDescription, rules, service)
-		targetGroup = selectTargetGroupJSON(info)
-	}
-
-	if targetGroup != "" {
-		tgConf := viper.New()
-		tgConf.SetConfigFile(targetGroup)
-		err := tgConf.ReadInConfig()
-		if err != nil {
-			logger.Fatal("Could not read file:", err)
-		}
-
-		targetGroupDescription = generateTargetGroupDescription(tgConf.GetString("targetGroupName"), targetGroup)
-	}
 
 	info = generateInfo(targetGroupDescription, rules, service)
 

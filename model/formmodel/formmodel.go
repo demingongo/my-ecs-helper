@@ -1,4 +1,4 @@
-package confirmmodel
+package formmmodel
 
 import (
 	"os"
@@ -10,10 +10,11 @@ import (
 	"golang.org/x/term"
 )
 
-type ConfirmModelConfig struct {
+type ModelConfig struct {
 	Title      string
 	Key        string
 	InfoBubble string
+	Form       *huh.Form
 }
 
 const (
@@ -55,29 +56,16 @@ var (
 )
 
 type Model struct {
-	confirmCreateForm *huh.Form // huh.Form is just a tea.Model
-	quitting          bool
-	State             huh.FormState
-	Confirmed         bool
-	infoBubble        string
-	key               string
+	form       *huh.Form // huh.Form is just a tea.Model
+	quitting   bool
+	State      huh.FormState
+	infoBubble string
+	key        string
 }
 
-func NewModel(config ConfirmModelConfig) Model {
-	title := "Are you sure?"
-	if config.Title != "" {
-		title = config.Title
-	}
-
+func NewModel(config ModelConfig) Model {
 	return Model{
-		confirmCreateForm: huh.NewForm(
-			huh.NewGroup(
-				huh.NewConfirm().
-					Key("confirm").
-					Title(title),
-			),
-		).WithTheme(huh.ThemeDracula()).
-			WithWidth(formWidth),
+		form: config.Form,
 
 		State: huh.StateNormal,
 
@@ -91,7 +79,7 @@ func NewModel(config ConfirmModelConfig) Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return m.confirmCreateForm.Init()
+	return m.form.Init()
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -107,15 +95,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// update the form
-	form, cmd := m.confirmCreateForm.Update(msg)
+	form, cmd := m.form.Update(msg)
 	if f, ok := form.(*huh.Form); ok {
-		m.confirmCreateForm = f
+		m.form = f
 	}
 	// is it completed?
 	if form.(*huh.Form).State == huh.StateCompleted {
-		m.Confirmed = m.confirmCreateForm.GetBool("confirm")
 		m.quitting = true
 		m.State = huh.StateCompleted
+		return m, tea.Quit
+	}
+	// is it aborted?
+	if form.(*huh.Form).State == huh.StateAborted {
+		m.quitting = true
+		m.State = huh.StateAborted
 		return m, tea.Quit
 	}
 
@@ -140,7 +133,7 @@ func (m Model) View() string {
 		// Form / Form
 		{
 			var style = lipgloss.NewStyle().Width(formWidth)
-			formView = style.Render(m.confirmCreateForm.View())
+			formView = style.Render(m.form.View())
 		}
 
 		// Form / Info
