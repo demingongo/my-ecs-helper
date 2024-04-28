@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/filepicker"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type FilepickerModelConfig struct {
@@ -15,6 +16,7 @@ type FilepickerModelConfig struct {
 	CurrentDirectory string
 	AllowedTypes     []string
 	EnableFastSelect bool
+	InfoBubble       string
 }
 
 type FilepickerModel struct {
@@ -24,6 +26,7 @@ type FilepickerModel struct {
 	enableFastSelect bool
 	title            string
 	SelectedFile     string
+	infoBubble       string
 }
 
 type clearErrorMsg struct{}
@@ -93,6 +96,14 @@ func (m FilepickerModel) View() string {
 		s.WriteString("Selected file: " + m.filepicker.Styles.Selected.Render(m.SelectedFile))
 	}
 	s.WriteString("\n\n" + m.filepicker.View() + "\n")
+
+	if m.infoBubble != "" {
+
+		formView := lipgloss.NewStyle().Width(60).MaxHeight(40).Render(s.String())
+
+		return lipgloss.JoinHorizontal(lipgloss.Top, formView, m.infoBubble)
+	}
+
 	return s.String()
 }
 
@@ -112,6 +123,7 @@ func NewFilepickerModel(config FilepickerModelConfig) FilepickerModel {
 		filepicker:       fp,
 		enableFastSelect: config.EnableFastSelect,
 		title:            config.Title,
+		infoBubble:       config.InfoBubble,
 	}
 
 	return m

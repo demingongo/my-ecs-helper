@@ -8,6 +8,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/log"
+	"github.com/demingongo/my-ecs-helper/model/confirmmodel"
+	"github.com/demingongo/my-ecs-helper/model/filepickermodel"
+	"github.com/spf13/viper"
 	"golang.org/x/term"
 )
 
@@ -471,7 +475,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "q":
+		case "ctrl+c":
 			m.quitting = true
 			m.form.State = huh.StateAborted
 			return m, tea.Quit
@@ -578,14 +582,134 @@ func (m Model) View() string {
 	return docStyle.Render(doc.String())
 }
 
-func Run() {
-	m := NewModel()
-	tm, _ := tea.NewProgram(&m).Run()
-	mm := tm.(Model)
+func selectJSONFile(title string, currentDirectory string, info string) string {
+	tm, _ := filepickermodel.NewFilepickerModelProgram(filepickermodel.FilepickerModelConfig{
+		AllowedTypes:     []string{".json"},
+		CurrentDirectory: currentDirectory,
+		EnableFastSelect: true,
+		Title:            title,
+		InfoBubble:       info,
+	}).Run()
+	mm := tm.(filepickermodel.FilepickerModel)
 
-	if mm.form.State == huh.StateCompleted {
-		fmt.Printf("So yea basically, you selected: %s, Lvl. %d\n", mm.form.GetString("class"), mm.form.GetInt("level"))
+	return mm.SelectedFile
+}
+
+func selectTargetGroupJSON(info string) string {
+	value := selectJSONFile("Pick a target group (.json):", "", info)
+	return value
+}
+
+func generateInfo(targetGroup string, rules []string, service string) string {
+	var style = lipgloss.NewStyle().
+		Padding(0, 1).
+		Background(lipgloss.Color("#bd93f9")).
+		Foreground(lipgloss.Color("#d1cbcb"))
+	if len(targetGroup) == 0 {
+		targetGroup = subtleText("-❌")
 	}
+
+	content := lipgloss.JoinVertical(lipgloss.Left,
+		style.Render("SUMMARY"),
+		subtitleStyle.Render("Target group"),
+		targetGroup,
+		subtitleStyle.Render("Rules"),
+		subtleText(strings.Join(rules, ", ")),
+		subtitleStyle.Render("Service"),
+		subtleText(service),
+	)
+
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("#bd93f9")).
+		BorderTop(true).
+		BorderLeft(true).
+		BorderRight(true).
+		BorderBottom(true).
+		Width(38).Render(content)
+}
+
+func createLogger() *log.Logger {
+	// Override the default info level style.
+	styles := log.DefaultStyles()
+	styles.Levels[log.InfoLevel] = lipgloss.NewStyle().
+		SetString("INFO").
+		Padding(0, 1, 0, 1).
+		Background(lipgloss.Color("50")).
+		Foreground(lipgloss.Color("0"))
+	// Add a custom style for key `err`
+	styles.Keys["err"] = lipgloss.NewStyle().Foreground(lipgloss.Color("50"))
+	styles.Values["err"] = lipgloss.NewStyle().Bold(true)
+	logger := log.New(os.Stderr)
+	logger.SetStyles(styles)
+
+	return logger
+}
+
+func generateTargetGroupDescription(name string, filepath string) string {
+
+	r := name
+
+	filepathMaxSize := 60
+
+	if filepath != "" {
+		if len(filepath) > filepathMaxSize {
+			r += " (..." + filepath[len(filepath)-filepathMaxSize:] + ")"
+		} else {
+			r += " (" + filepath + ")"
+		}
+	}
+
+	return r
+}
+
+func Run() {
+
+	var (
+		targetGroup            string
+		targetGroupDescription string
+		rules                  []string
+		service                string
+	)
+
+	logger := createLogger()
+
+	info := generateInfo(targetGroupDescription, rules, service)
+
+	m := confirmmodel.NewModel(confirmmodel.ConfirmModelConfig{
+		InfoBubble: info,
+		Title:      "Create a target group?",
+		Key:        "confirm-create-targetgroup",
+	})
+	tm, _ := tea.NewProgram(&m).Run()
+	/*
+		mm := tm.(Model)
+
+		if mm.form.State == huh.StateCompleted {
+			fmt.Printf("So yea basically, you selected: %s, Lvl. %d\n", mm.form.GetString("class"), mm.form.GetInt("level"))
+		}
+	*/
+	mm := tm.(confirmmodel.Model)
+
+	if mm.State == huh.StateCompleted && mm.Confirmed {
+		info = generateInfo(targetGroupDescription, rules, service)
+		targetGroup = selectTargetGroupJSON(info)
+	}
+
+	if targetGroup != "" {
+		tgConf := viper.New()
+		tgConf.SetConfigFile(targetGroup)
+		err := tgConf.ReadInConfig()
+		if err != nil {
+			logger.Fatal("Could not read file:", err)
+		}
+
+		targetGroupDescription = generateTargetGroupDescription(tgConf.GetString("targetGroupName"), targetGroup)
+	}
+
+	info = generateInfo(targetGroupDescription, rules, service)
+
+	fmt.Println(info)
 
 	fmt.Println("Done")
 }
