@@ -382,16 +382,31 @@ const (
 
 var (
 
-	// Summary block
+	// General.
+
+	subtle  = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
+	special = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
+
+	subtleText = lipgloss.NewStyle().Foreground(subtle).Render
+
+	// Titles.
+
+	subtitleStyle = lipgloss.NewStyle().
+			BorderStyle(lipgloss.NormalBorder()).
+			BorderTop(true).
+			BorderForeground(subtle).
+			Foreground(special)
+
+	// Summary block.
+
 	summaryStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#874BFD")).
-		//Padding(1, 0).
-		BorderTop(true).
-		BorderLeft(true).
-		BorderRight(true).
-		BorderBottom(true).
-		Width(summaryWidth)
+			BorderForeground(lipgloss.Color("#bd93f9")).
+			BorderTop(true).
+			BorderLeft(true).
+			BorderRight(true).
+			BorderBottom(true).
+			Width(summaryWidth)
 
 	// Status Bar.
 
@@ -442,7 +457,7 @@ func NewModel() Model {
 					Options(huh.NewOptions(1, 20, 9999)...).
 					Title("Choose your level"),
 			),
-		).WithTheme(huh.ThemeDracula()).
+		).WithTheme(huh.ThemeBase()).
 			WithWidth(formWidth),
 	}
 }
@@ -502,13 +517,33 @@ func (m Model) View() string {
 		// Form / Summary
 		{
 			var style = lipgloss.NewStyle().
-				PaddingLeft(1).
-				PaddingRight(1).
-				Background(lipgloss.Color("0")).
-				Foreground(lipgloss.Color("255"))
-			title := style.Render("SUMMARY")
+				Padding(0, 1).
+				Background(lipgloss.Color("#bd93f9")).
+				Foreground(lipgloss.Color("#d1cbcb"))
 
-			summaryView = summaryStyle.Render(title)
+			var (
+				targetGroup string
+				rules       []string
+				service     string
+			)
+
+			if len(m.form.GetString("class")) > 0 {
+				targetGroup = m.form.GetString("class")
+			} else {
+				targetGroup = subtleText("-")
+			}
+
+			summary := lipgloss.JoinVertical(lipgloss.Left,
+				style.Render("SUMMARY"),
+				subtitleStyle.Render("Target group"),
+				targetGroup,
+				subtitleStyle.Render("Rules"),
+				subtleText(strings.Join(rules, ", ")),
+				subtitleStyle.Render("Service"),
+				subtleText(service),
+			)
+
+			summaryView = summaryStyle.Render(summary)
 		}
 
 		doc.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, formView, summaryView))
@@ -520,7 +555,7 @@ func (m Model) View() string {
 		w := lipgloss.Width
 
 		statusKey := statusStyle.Render("STATUS")
-		encoding := encodingStyle.Render("UTF-8")
+		encoding := encodingStyle.Render("INFO")
 		fishCake := fishCakeStyle.Render("💾 My ECS helper")
 		statusVal := statusText.Copy().
 			Width(width - w(statusKey) - w(encoding) - w(fishCake)).
