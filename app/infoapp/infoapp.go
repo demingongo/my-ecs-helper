@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
+	"github.com/demingongo/my-ecs-helper/aws"
 	"github.com/demingongo/my-ecs-helper/model/filepickermodel"
 	"github.com/spf13/viper"
 )
@@ -374,6 +375,14 @@ func max(a, b int) int {
 }
 */
 
+type Config struct {
+	targetGroup            string
+	targetGroupDescription string
+	createTargetGroup      bool
+	rules                  []string
+	service                string
+}
+
 const (
 	formWidth = 60
 	infoWidth = 38
@@ -385,16 +394,13 @@ var (
 
 	// General.
 
-	targetGroup            string
-	targetGroupDescription string
-	rules                  []string
-	service                string
-	info                   string
+	config Config
+	info   string
 
 	theme = huh.ThemeBase()
 
 	subtle  = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
-	special = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
+	special = lipgloss.AdaptiveColor{Light: "230", Dark: "#010102"}
 
 	subtleText = lipgloss.NewStyle().Foreground(subtle).Render
 
@@ -402,20 +408,20 @@ var (
 
 	titleStyle = lipgloss.NewStyle().
 			Padding(0, 1).
-			Background(lipgloss.Color("#bd93f9")).
-			Foreground(lipgloss.Color("#d1cbcb"))
+			Background(lipgloss.Color("7")).
+			Foreground(special)
 
 	subtitleStyle = lipgloss.NewStyle().
 			BorderStyle(lipgloss.NormalBorder()).
 			BorderTop(true).
 			BorderForeground(subtle).
-			Foreground(special)
+			Foreground(lipgloss.Color("6"))
 
 	// Info block.
 
 	infoStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#bd93f9")).
+			BorderForeground(lipgloss.Color("7")).
 			BorderTop(true).
 			BorderLeft(true).
 			BorderRight(true).
@@ -620,17 +626,12 @@ func selectJSONFile(title string, currentDirectory string, info string) string {
 	return mm.SelectedFile
 }
 
-func selectTargetGroupJSON(info string) string {
-	value := selectJSONFile("Pick a target group (.json):", "", info)
-	return value
-}
-
 func generateInfo() string {
 
-	tgInfo := targetGroup
+	tgInfo := config.targetGroup
 
-	if targetGroupDescription != "" {
-		tgInfo = targetGroupDescription
+	if config.targetGroupDescription != "" {
+		tgInfo = config.targetGroupDescription
 	}
 
 	if len(tgInfo) == 0 {
@@ -642,9 +643,9 @@ func generateInfo() string {
 		subtitleStyle.Render("Target group"),
 		tgInfo,
 		subtitleStyle.Render("Rules"),
-		subtleText(strings.Join(rules, ", ")),
+		subtleText(strings.Join(config.rules, ", ")),
 		subtitleStyle.Render("Service"),
-		subtleText(service),
+		subtleText(config.service),
 	)
 
 	return infoStyle.Render(content)
@@ -671,7 +672,7 @@ func generateTargetGroupDescription(name string, filepath string) string {
 
 	r := name
 
-	filepathMaxSize := 60
+	filepathMaxSize := 57
 
 	if filepath != "" {
 		if len(filepath) > filepathMaxSize {
@@ -684,94 +685,59 @@ func generateTargetGroupDescription(name string, filepath string) string {
 	return r
 }
 
-/*
-func generateFirstSelectForm() *huh.Form {
-	form := huh.NewForm(
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title("What do we do:").
-				Key("operation").
-				Options(
-					huh.NewOption("Create a target group", "create-targetgroup"),
-					huh.NewOption("Select a target group", "select-targetgroup"),
-					huh.NewOption("Create a service", "create-service"),
-					huh.NewOption("None", "none"),
-				),
-
-			huh.NewConfirm().
-				Key("confirm").
-				Title("Are you sure?").
-				Validate(func(b bool) error {
-					if !b {
-						return errors.New("waiting till you confirm")
-					}
-					return nil
-				}),
-		),
-	).
-		WithTheme(huh.ThemeDracula()).
-		WithWidth(formWidth)
-
-	return form
-}
-*/
-/*
-func targetGroupSelectForm(value *string, confirm *bool) *huh.Form {
-	form := huh.NewForm(
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title("Select a target group:").
-				Options(
-					huh.NewOption("dev-candidates", "arn:targetgroup/dev-candidates"),
-					huh.NewOption("dev-websites", "arn:targetgroup/dev-websites"),
-					huh.NewOption("prod-candidates", "arn:targetgroup/prod-candidates"),
-					huh.NewOption("prod-websites", "arn:targetgroup/prod-websites"),
-				).
-				Value(value),
-
-			huh.NewConfirm().
-				Title("Are you sure?").
-				Value(confirm),
-		),
-	).WithTheme(huh.ThemeDracula())
-
-	return form
-}
-*/
-
 func Run() {
 
 	logger := createLogger()
 
 	info = generateInfo()
 
-	firstSelectForm := runFirstSelectForm()
+	menuForm := runFormMenu()
 
-	if firstSelectForm.State == huh.StateCompleted {
+	if menuForm.State == huh.StateCompleted && menuForm.GetString("operation") != "none" {
 
-		if firstSelectForm.GetString("operation") == "create-targetgroup" {
-			info = generateInfo()
-			targetGroup = selectTargetGroupJSON(info)
+		// create-targetgroup
+		if menuForm.GetString("operation") == "create-targetgroup" {
+			config.targetGroup = selectTargetGroupJSON(info)
 
-			if targetGroup != "" {
+			if config.targetGroup != "" {
 				tgConf := viper.New()
-				tgConf.SetConfigFile(targetGroup)
+				tgConf.SetConfigFile(config.targetGroup)
 				err := tgConf.ReadInConfig()
 				if err != nil {
 					logger.Fatal("Could not read file:", err)
 				}
 
-				targetGroupDescription = generateTargetGroupDescription(tgConf.GetString("targetGroupName"), targetGroup)
+				config.targetGroupDescription = generateTargetGroupDescription(tgConf.GetString("targetGroupName"), config.targetGroup)
+				config.createTargetGroup = true
 			}
+			info = generateInfo()
 		}
 
-		// @TODO select (select service)
+		// select-targetgroup
+		if menuForm.GetString("operation") == "select-targetgroup" {
+			/*
+				config.targetGroup = runFormTargetgroup().Get("targetgroup")
+
+				if config.targetGroup != "" {
+					config.targetGroupDescription = config.targetGroup
+				}
+			*/
+			targetGroupForm := runFormTargetgroup()
+			if targetGroupForm.State == huh.StateCompleted {
+				tg := targetGroupForm.Get("targetgroup").(aws.TargetGroup)
+				if tg.Arn != "" {
+					config.targetGroup = tg.Arn
+					config.targetGroupDescription = generateTargetGroupDescription(tg.Name, tg.Arn)
+				}
+
+				info = generateInfo()
+			}
+
+		}
 
 		// @TODO create || select (create rules)
 
-		// @TODO create-service || create || select (create service)
-
-		info = generateInfo()
+		// @TODO create-service || create-targetgroup || select-targetgroup
 
 		fmt.Println(info)
 

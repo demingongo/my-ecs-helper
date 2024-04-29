@@ -8,7 +8,7 @@ import (
 	formmmodel "github.com/demingongo/my-ecs-helper/model/formmodel"
 )
 
-func generateFirstSelectForm() *huh.Form {
+func generateFormMenu() *huh.Form {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
@@ -18,7 +18,7 @@ func generateFirstSelectForm() *huh.Form {
 					huh.NewOption("Create a target group", "create-targetgroup"),
 					huh.NewOption("Select a target group", "select-targetgroup"),
 					huh.NewOption("Create a service", "create-service"),
-					huh.NewOption("None", "none"),
+					huh.NewOption("Nothing", "none"),
 				),
 
 			huh.NewConfirm().
@@ -38,9 +38,9 @@ func generateFirstSelectForm() *huh.Form {
 	return form
 }
 
-func runFirstSelectForm() *huh.Form {
+func runFormMenu() *huh.Form {
 
-	firstSelectForm := generateFirstSelectForm()
+	firstSelectForm := generateFormMenu()
 	firstSelect := formmmodel.NewModel(formmmodel.ModelConfig{
 		Form:       firstSelectForm,
 		InfoBubble: info,

@@ -135,7 +135,7 @@ func (m Model) View() string {
 
 		// Form / Info
 		{
-			if m.infoBubble != "" {
+			if m.infoBubble != "" && (m.width == 0 || (m.width > 0 && physicalWidth >= m.width*4/5)) {
 				infoView = m.infoBubble
 			}
 		}
