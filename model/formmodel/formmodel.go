@@ -17,13 +17,6 @@ type ModelConfig struct {
 	Form       *huh.Form
 }
 
-const (
-	formWidth    = 60
-	summaryWidth = 38
-
-	width = 100
-)
-
 var (
 	// Status Bar.
 
@@ -58,9 +51,10 @@ var (
 type Model struct {
 	form       *huh.Form // huh.Form is just a tea.Model
 	quitting   bool
-	State      huh.FormState
 	infoBubble string
 	key        string
+	width      int
+	State      huh.FormState
 }
 
 func NewModel(config ModelConfig) Model {
@@ -76,6 +70,11 @@ func NewModel(config ModelConfig) Model {
 		// for updating the infoBubble for example (when it will be a class and not just a string)
 		key: config.Key,
 	}
+}
+
+func (m Model) Width(width int) Model {
+	m.width = width
+	return m
 }
 
 func (m Model) Init() tea.Cmd {
@@ -115,7 +114,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// This returns a string !!!!!!!!!!!!!!!!!! EUREKA
 func (m Model) View() string {
 	if m.quitting {
 		return ""
@@ -132,8 +130,7 @@ func (m Model) View() string {
 
 		// Form / Form
 		{
-			var style = lipgloss.NewStyle().Width(formWidth)
-			formView = style.Render(m.form.View())
+			formView = m.form.View()
 		}
 
 		// Form / Info
@@ -155,7 +152,7 @@ func (m Model) View() string {
 		encoding := encodingStyle.Render("INFO")
 		fishCake := fishCakeStyle.Render("💾 My ECS helper")
 		statusVal := statusText.Copy().
-			Width(width - w(statusKey) - w(encoding) - w(fishCake)).
+			Width(m.width - w(statusKey) - w(encoding) - w(fishCake)).
 			Render("Normal")
 
 		bar := lipgloss.JoinHorizontal(lipgloss.Top,
@@ -165,7 +162,7 @@ func (m Model) View() string {
 			fishCake,
 		)
 
-		doc.WriteString(statusBarStyle.Width(width).Render(bar))
+		doc.WriteString(statusBarStyle.Width(m.width).Render(bar))
 	}
 
 	if physicalWidth > 0 {

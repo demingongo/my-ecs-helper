@@ -5,14 +5,11 @@ import (
 	"os"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/demingongo/my-ecs-helper/model/filepickermodel"
-	formmmodel "github.com/demingongo/my-ecs-helper/model/formmodel"
 	"github.com/spf13/viper"
-	"golang.org/x/term"
 )
 
 /*
@@ -378,8 +375,8 @@ func max(a, b int) int {
 */
 
 const (
-	formWidth    = 60
-	summaryWidth = 38
+	formWidth = 60
+	infoWidth = 38
 
 	width = 100
 )
@@ -388,6 +385,14 @@ var (
 
 	// General.
 
+	targetGroup            string
+	targetGroupDescription string
+	rules                  []string
+	service                string
+	info                   string
+
+	theme = huh.ThemeBase()
+
 	subtle  = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
 	special = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
 
@@ -395,57 +400,76 @@ var (
 
 	// Titles.
 
+	titleStyle = lipgloss.NewStyle().
+			Padding(0, 1).
+			Background(lipgloss.Color("#bd93f9")).
+			Foreground(lipgloss.Color("#d1cbcb"))
+
 	subtitleStyle = lipgloss.NewStyle().
 			BorderStyle(lipgloss.NormalBorder()).
 			BorderTop(true).
 			BorderForeground(subtle).
 			Foreground(special)
 
-	// Summary block.
+	// Info block.
 
-	summaryStyle = lipgloss.NewStyle().
+	infoStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#bd93f9")).
 			BorderTop(true).
 			BorderLeft(true).
 			BorderRight(true).
 			BorderBottom(true).
-			Width(summaryWidth)
+			Width(infoWidth)
 
-	// Status Bar.
+	/*
+		// Summary block.
+		summaryStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#bd93f9")).
+				BorderTop(true).
+				BorderLeft(true).
+				BorderRight(true).
+				BorderBottom(true).
+				Width(summaryWidth)
 
-	statusNugget = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Padding(0, 1)
+		// Status Bar.
 
-	statusBarStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#C1C6B2"}).
-			Background(lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#353533"})
+		statusNugget = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FFFDF5")).
+				Padding(0, 1)
 
-	statusStyle = lipgloss.NewStyle().
-			Inherit(statusBarStyle).
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Background(lipgloss.Color("#FF5F87")).
-			Padding(0, 1).
-			MarginRight(1)
+		statusBarStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#C1C6B2"}).
+				Background(lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#353533"})
 
-	encodingStyle = statusNugget.Copy().
-			Background(lipgloss.Color("#A550DF")).
-			Align(lipgloss.Right)
+		statusStyle = lipgloss.NewStyle().
+				Inherit(statusBarStyle).
+				Foreground(lipgloss.Color("#FFFDF5")).
+				Background(lipgloss.Color("#FF5F87")).
+				Padding(0, 1).
+				MarginRight(1)
 
-	statusText = lipgloss.NewStyle().Inherit(statusBarStyle)
+		encodingStyle = statusNugget.Copy().
+				Background(lipgloss.Color("#A550DF")).
+				Align(lipgloss.Right)
 
-	fishCakeStyle = statusNugget.Copy().Background(lipgloss.Color("#6124DF"))
+		statusText = lipgloss.NewStyle().Inherit(statusBarStyle)
 
-	// Page.
+		fishCakeStyle = statusNugget.Copy().Background(lipgloss.Color("#6124DF"))
 
-	docStyle = lipgloss.NewStyle().Padding(1, 2, 1, 2)
+		// Page.
+
+		docStyle = lipgloss.NewStyle().Padding(1, 2, 1, 2)
+	*/
 )
 
+/*
 type Model struct {
 	form     *huh.Form // huh.Form is just a tea.Model
 	quitting bool
 }
+
 
 func NewModel() Model {
 	return Model{
@@ -581,6 +605,7 @@ func (m Model) View() string {
 
 	return docStyle.Render(doc.String())
 }
+*/
 
 func selectJSONFile(title string, currentDirectory string, info string) string {
 	tm, _ := filepickermodel.NewFilepickerModelProgram(filepickermodel.FilepickerModelConfig{
@@ -600,33 +625,29 @@ func selectTargetGroupJSON(info string) string {
 	return value
 }
 
-func generateInfo(targetGroup string, rules []string, service string) string {
-	var style = lipgloss.NewStyle().
-		Padding(0, 1).
-		Background(lipgloss.Color("#bd93f9")).
-		Foreground(lipgloss.Color("#d1cbcb"))
-	if len(targetGroup) == 0 {
-		targetGroup = subtleText("-❌")
+func generateInfo() string {
+
+	tgInfo := targetGroup
+
+	if targetGroupDescription != "" {
+		tgInfo = targetGroupDescription
+	}
+
+	if len(tgInfo) == 0 {
+		tgInfo = subtleText("-❌")
 	}
 
 	content := lipgloss.JoinVertical(lipgloss.Left,
-		style.Render("SUMMARY"),
+		titleStyle.Render("SUMMARY"),
 		subtitleStyle.Render("Target group"),
-		targetGroup,
+		tgInfo,
 		subtitleStyle.Render("Rules"),
 		subtleText(strings.Join(rules, ", ")),
 		subtitleStyle.Render("Service"),
 		subtleText(service),
 	)
 
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("#bd93f9")).
-		BorderTop(true).
-		BorderLeft(true).
-		BorderRight(true).
-		BorderBottom(true).
-		Width(38).Render(content)
+	return infoStyle.Render(content)
 }
 
 func createLogger() *log.Logger {
@@ -663,27 +684,37 @@ func generateTargetGroupDescription(name string, filepath string) string {
 	return r
 }
 
+/*
 func generateFirstSelectForm() *huh.Form {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title("What do we do:").
-				Key("targetgroup").
+				Key("operation").
 				Options(
-					huh.NewOption("Create a target group", "create"),
-					huh.NewOption("Select a target group", "select"),
-					huh.NewOption("Other", "other"),
+					huh.NewOption("Create a target group", "create-targetgroup"),
+					huh.NewOption("Select a target group", "select-targetgroup"),
+					huh.NewOption("Create a service", "create-service"),
+					huh.NewOption("None", "none"),
 				),
 
 			huh.NewConfirm().
 				Key("confirm").
-				Title("Are you sure?"),
+				Title("Are you sure?").
+				Validate(func(b bool) error {
+					if !b {
+						return errors.New("waiting till you confirm")
+					}
+					return nil
+				}),
 		),
-	).WithTheme(huh.ThemeDracula())
+	).
+		WithTheme(huh.ThemeDracula()).
+		WithWidth(formWidth)
 
 	return form
 }
-
+*/
 /*
 func targetGroupSelectForm(value *string, confirm *bool) *huh.Form {
 	form := huh.NewForm(
@@ -710,68 +741,42 @@ func targetGroupSelectForm(value *string, confirm *bool) *huh.Form {
 
 func Run() {
 
-	var (
-		targetGroup            string
-		targetGroupDescription string
-		rules                  []string
-		service                string
-	)
-
 	logger := createLogger()
 
-	info := generateInfo(targetGroupDescription, rules, service)
+	info = generateInfo()
 
-	firstSelectForm := generateFirstSelectForm()
-	firstSelect := formmmodel.NewModel(formmmodel.ModelConfig{
-		Form:       firstSelectForm,
-		InfoBubble: info,
-	})
+	firstSelectForm := runFirstSelectForm()
 
-	tea.NewProgram(&firstSelect).Run()
+	if firstSelectForm.State == huh.StateCompleted {
 
-	if firstSelectForm.State == huh.StateCompleted && firstSelectForm.GetString("targetgroup") == "create" {
-		/*
-			m := confirmmodel.NewModel(confirmmodel.ConfirmModelConfig{
-				InfoBubble: info,
-				Title:      "Create a target group?",
-				Key:        "confirm-create-targetgroup",
-			})
-			tm, _ := tea.NewProgram(&m).Run()
+		if firstSelectForm.GetString("operation") == "create-targetgroup" {
+			info = generateInfo()
+			targetGroup = selectTargetGroupJSON(info)
 
-			mm := tm.(confirmmodel.Model)
+			if targetGroup != "" {
+				tgConf := viper.New()
+				tgConf.SetConfigFile(targetGroup)
+				err := tgConf.ReadInConfig()
+				if err != nil {
+					logger.Fatal("Could not read file:", err)
+				}
 
-			if mm.State == huh.StateCompleted && mm.Confirmed {
-				info = generateInfo(targetGroupDescription, rules, service)
-				targetGroup = selectTargetGroupJSON(info)
+				targetGroupDescription = generateTargetGroupDescription(tgConf.GetString("targetGroupName"), targetGroup)
 			}
-		*/
-
-		info = generateInfo(targetGroupDescription, rules, service)
-		targetGroup = selectTargetGroupJSON(info)
-
-		if targetGroup != "" {
-			tgConf := viper.New()
-			tgConf.SetConfigFile(targetGroup)
-			err := tgConf.ReadInConfig()
-			if err != nil {
-				logger.Fatal("Could not read file:", err)
-			}
-
-			targetGroupDescription = generateTargetGroupDescription(tgConf.GetString("targetGroupName"), targetGroup)
 		}
+
+		// @TODO select (select service)
+
+		// @TODO create || select (create rules)
+
+		// @TODO create-service || create || select (create service)
+
+		info = generateInfo()
+
+		fmt.Println(info)
+
+		// @TODO processing
 	}
-
-	/*
-		mm := tm.(Model)
-
-		if mm.form.State == huh.StateCompleted {
-			fmt.Printf("So yea basically, you selected: %s, Lvl. %d\n", mm.form.GetString("class"), mm.form.GetInt("level"))
-		}
-	*/
-
-	info = generateInfo(targetGroupDescription, rules, service)
-
-	fmt.Println(info)
 
 	fmt.Println("Done")
 }
