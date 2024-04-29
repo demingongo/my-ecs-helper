@@ -3,6 +3,8 @@ package infoapp
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -643,9 +645,9 @@ func generateInfo() string {
 		subtitleStyle.Render("Target group"),
 		tgInfo,
 		subtitleStyle.Render("Rules"),
-		subtleText(strings.Join(config.rules, ", ")),
+		strings.Join(config.rules, ", "),
 		subtitleStyle.Render("Service"),
-		subtleText(config.service),
+		config.service,
 	)
 
 	return infoStyle.Render(content)
@@ -695,8 +697,10 @@ func Run() {
 
 	if menuForm.State == huh.StateCompleted && menuForm.GetString("operation") != "none" {
 
+		operation := menuForm.GetString("operation")
+
 		// create-targetgroup
-		if menuForm.GetString("operation") == "create-targetgroup" {
+		if operation == "create-targetgroup" {
 			config.targetGroup = selectTargetGroupJSON(info)
 
 			if config.targetGroup != "" {
@@ -714,14 +718,7 @@ func Run() {
 		}
 
 		// select-targetgroup
-		if menuForm.GetString("operation") == "select-targetgroup" {
-			/*
-				config.targetGroup = runFormTargetgroup().Get("targetgroup")
-
-				if config.targetGroup != "" {
-					config.targetGroupDescription = config.targetGroup
-				}
-			*/
+		if operation == "select-targetgroup" {
 			targetGroupForm := runFormTargetgroup()
 			if targetGroupForm.State == huh.StateCompleted {
 				tg := targetGroupForm.Get("targetgroup").(aws.TargetGroup)
@@ -729,15 +726,32 @@ func Run() {
 					config.targetGroup = tg.Arn
 					config.targetGroupDescription = generateTargetGroupDescription(tg.Name, tg.Arn)
 				}
-
 				info = generateInfo()
 			}
-
 		}
 
-		// @TODO create || select (create rules)
+		// @TODO create rules: create-targetgroup || select-targetgroup
+		if operation == "create-targetgroup" || operation == "select-targetgroup" {
+			var searchDir string
+			var maxRules = 5
+			for len(config.rules) < 5 {
+				title := fmt.Sprintf("Pick a rule (.json) (%d/%d):", len(config.rules), maxRules)
+				file := selectRuleJSON(info, title, searchDir)
+				if len(file) > 0 {
+					if slices.Contains(config.rules, file) {
+						break
+					} else {
+						config.rules = append(config.rules, file)
+						searchDir = filepath.Dir(file)
+						info = generateInfo()
+					}
+				} else {
+					break
+				}
+			}
+		}
 
-		// @TODO create-service || create-targetgroup || select-targetgroup
+		// @TODO create service: create-service || create-targetgroup || select-targetgroup
 
 		fmt.Println(info)
 
