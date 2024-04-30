@@ -19,7 +19,8 @@ func CreateRule(filepath string, targetGroupArn string) (string, error) {
 		return strings.Join(args, " "), nil
 	}
 
-	// @TODO
+	var resp any
+	stdout, err := execAWS(args, &resp)
 
-	return strings.Join(args, " "), nil
+	return string(stdout), err
 }

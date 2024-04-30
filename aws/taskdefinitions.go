@@ -63,27 +63,25 @@ func DescribeTaskDefinition(taskDefinitionArn string) (TaskDefinition, error) {
 	}
 	log.Debug(resp)
 
-	//result = resp.taskDefinition
+	result = resp.TaskDefinition
 
 	return result, nil
 }
 
 func ListPortMapping(taskDefinitionArn string) ([]ContainerPortMapping, error) {
-	options := []ContainerPortMapping{}
+	result := []ContainerPortMapping{}
 	td, err := DescribeTaskDefinition(taskDefinitionArn)
 	if err != nil {
-		return options, err
+		return result, err
 	}
 	for _, cd := range td.ContainerDefinitions {
 		for _, pm := range cd.PortMappings {
-			options = append(options, ContainerPortMapping{
+			result = append(result, ContainerPortMapping{
 				Name:        cd.Name,
 				PortMapping: pm,
 			})
 		}
 	}
 
-	// @TODO
-
-	return options, nil
+	return result, nil
 }
