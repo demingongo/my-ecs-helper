@@ -325,7 +325,7 @@ func Run() {
 					logger.Fatal("Could not read file:", err)
 				}
 
-				config.targetGroup.Name = tgConf.GetString("targetGroupName")
+				config.targetGroup.Name = tgConf.GetString("Name")
 
 				config.targetGroupDescription = generateDescription(config.targetGroup.Name, config.targetGroup.Filepath)
 			}
