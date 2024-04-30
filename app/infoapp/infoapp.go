@@ -27,6 +27,10 @@ func (tgc TargetGroupConfig) IsComplete() bool {
 	return (tgc.New && tgc.Filepath != "") || tgc.Arn != ""
 }
 
+func (tgc TargetGroupConfig) IsNew() bool {
+	return (tgc.New && tgc.Filepath != "")
+}
+
 type ServiceConfig struct {
 	Filepath       string // must be filled if New=true
 	Name           string // service's name
@@ -264,12 +268,13 @@ func generateDescription(name string, filepath string) string {
 }
 
 func process(logger *log.Logger) {
-	if config.targetGroup.New && config.targetGroup.Filepath != "" {
+	if config.targetGroup.IsNew() {
 		logger.Debug(fmt.Sprintf("create target group \"%s\"", config.targetGroup.Name))
-		_, err := aws.CreateTargetGroup(config.targetGroup.Filepath)
+		result, err := aws.CreateTargetGroup(config.targetGroup.Filepath)
 		if err != nil {
 			logger.Fatal("CreateTargetGroup", err)
 		}
+		config.targetGroup.Arn = result.TargetGroupArn
 	}
 
 	if len(config.rules) > 0 {

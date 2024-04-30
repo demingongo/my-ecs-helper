@@ -13,7 +13,7 @@ type TargetGroup struct {
 	TargetGroupName string
 }
 
-type targetGroupsResponse struct {
+type describeTargetGroupsOutput struct {
 	TargetGroups []TargetGroup
 }
 
@@ -31,7 +31,7 @@ func DescribeTargetGroups() ([]TargetGroup, error) {
 		return options, nil
 	}
 
-	var resp targetGroupsResponse
+	var resp describeTargetGroupsOutput
 	_, err := execAWS(args, &resp)
 	if err != nil {
 		return options, err
@@ -43,9 +43,10 @@ func DescribeTargetGroups() ([]TargetGroup, error) {
 }
 
 func CreateTargetGroup(filepath string) (TargetGroup, error) {
-	var r TargetGroup
-	cmd := fmt.Sprintf("aws elbv2 create-target-group --output json --cli-input-json \"$(cat %s)\"", filepath)
-	log.Debug(cmd)
+	var result TargetGroup
+	var args []string
+	args = append(args, "elbv2", "create-target-group", "--output", "json", "--cli-input-json", fmt.Sprintf("$(cat %s)", filepath))
+	log.Debug(args)
 	if viper.GetBool("dummy") {
 		return TargetGroup{
 			TargetGroupArn:  "arn:dummy",
@@ -53,7 +54,15 @@ func CreateTargetGroup(filepath string) (TargetGroup, error) {
 		}, nil
 	}
 
-	// @TODO
+	var resp describeTargetGroupsOutput
+	_, err := execAWS(args, &resp)
+	if err != nil {
+		return result, err
+	}
 
-	return r, nil
+	if len(resp.TargetGroups) > 0 {
+		result = resp.TargetGroups[0]
+	}
+
+	return result, nil
 }

@@ -23,17 +23,22 @@ type ContainerDefinition struct {
 }
 
 type TaskDefinition struct {
-	Arn                  string
+	TaskDefinitionArn    string
 	ContainerDefinitions []ContainerDefinition
 }
 
-func DescribeTaskDefinition(taskDefinitionArn string) ([]TaskDefinition, error) {
-	options := []TaskDefinition{}
-	cmd := "aws ecs describe-task-definition --output json --no-paginate --task-definition " + taskDefinitionArn
-	log.Debug(cmd)
+type describeTaskDefinitionResponse struct {
+	taskDefinition TaskDefinition
+}
+
+func DescribeTaskDefinition(taskDefinitionArn string) (TaskDefinition, error) {
+	result := TaskDefinition{}
+	var args []string
+	args = append(args, "ecs", "describe-task-definition", "--output", "json", "--no-paginate", "--task-definition", taskDefinitionArn)
+	log.Debug(args)
 	if viper.GetBool("dummy") {
-		options = append(options, TaskDefinition{
-			Arn: "arn:task-definition/taskdef-ci-dmz-web:5",
+		result = TaskDefinition{
+			TaskDefinitionArn: taskDefinitionArn,
 			ContainerDefinitions: []ContainerDefinition{
 				{
 					Name:  "dmz-web",
@@ -47,29 +52,33 @@ func DescribeTaskDefinition(taskDefinitionArn string) ([]TaskDefinition, error) 
 					},
 				},
 			},
-		})
-		return options, nil
+		}
+		return result, nil
 	}
 
-	// @TODO
+	var resp describeTaskDefinitionResponse
+	_, err := execAWS(args, &resp)
+	if err != nil {
+		return result, err
+	}
 
-	return options, nil
+	result = resp.taskDefinition
+
+	return result, nil
 }
 
 func ListPortMapping(taskDefinitionArn string) ([]ContainerPortMapping, error) {
 	options := []ContainerPortMapping{}
-	v, err := DescribeTaskDefinition(taskDefinitionArn)
+	td, err := DescribeTaskDefinition(taskDefinitionArn)
 	if err != nil {
 		return options, err
 	}
-	for _, td := range v {
-		for _, cd := range td.ContainerDefinitions {
-			for _, pm := range cd.PortMappings {
-				options = append(options, ContainerPortMapping{
-					Name:        cd.Name,
-					PortMapping: pm,
-				})
-			}
+	for _, cd := range td.ContainerDefinitions {
+		for _, pm := range cd.PortMappings {
+			options = append(options, ContainerPortMapping{
+				Name:        cd.Name,
+				PortMapping: pm,
+			})
 		}
 	}
 
