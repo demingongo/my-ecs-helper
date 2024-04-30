@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
@@ -394,6 +395,14 @@ type Config struct {
 	serviceDescription     string
 }
 
+type filepickerStyleStruct struct {
+	cursor    lipgloss.Style
+	directory lipgloss.Style
+	file      lipgloss.Style
+	selected  lipgloss.Style
+	symlink   lipgloss.Style
+}
+
 const (
 	formWidth = 60
 	infoWidth = 38
@@ -438,6 +447,15 @@ var (
 			BorderRight(true).
 			BorderBottom(true).
 			Width(infoWidth)
+
+	// filepicker
+	filepickerStyle = filepickerStyleStruct{
+		cursor:    lipgloss.NewStyle().Foreground(lipgloss.Color("6")),
+		directory: lipgloss.NewStyle().Foreground(lipgloss.Color("7")),
+		file:      lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "232", Dark: "255"}),
+		selected:  lipgloss.NewStyle().Foreground(lipgloss.Color("6")),
+		symlink:   lipgloss.NewStyle().Foreground(lipgloss.Color("4")),
+	}
 
 	/*
 		// Summary block.
@@ -625,13 +643,26 @@ func (m Model) View() string {
 */
 
 func selectJSONFile(title string, currentDirectory string, info string) string {
-	tm, _ := filepickermodel.NewFilepickerModelProgram(filepickermodel.FilepickerModelConfig{
+	m := filepickermodel.NewFilepickerModel(filepickermodel.FilepickerModelConfig{
 		AllowedTypes:     []string{".json"},
 		CurrentDirectory: currentDirectory,
 		EnableFastSelect: true,
 		Title:            title,
 		InfoBubble:       info,
-	}).Run()
+	}).
+		ShowPermissions(false).
+		ShowSize(false).
+		Height(8).
+		Width(width).
+		FilepickerWidth(formWidth).
+		StyleDirectory(filepickerStyle.directory).
+		StyleFile(filepickerStyle.file).
+		StyleSymlink(filepickerStyle.symlink).
+		StyleCursor(filepickerStyle.cursor).
+		StyleSelected(filepickerStyle.selected)
+
+	tm, _ := tea.NewProgram(&m).Run()
+
 	mm := tm.(filepickermodel.FilepickerModel)
 
 	return mm.SelectedFile
