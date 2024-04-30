@@ -12,7 +12,23 @@ func CreateRule(filepath string, targetGroupArn string) (string, error) {
 	var args []string
 	args = append(args, "elbv2", "create-rule", "--cli-input-json", fmt.Sprintf("$(cat %s)", filepath))
 	if targetGroupArn != "" {
-		args = append(args, "--actions", fmt.Sprintf("Type=forward,TargetGroupArn=%s", targetGroupArn))
+		args = append(args, "--action", fmt.Sprintf(`[{
+			\"Type\": \"forward\",
+			\"TargetGroupArn\": \"%s\",
+			\"Order\": 1,
+			\"ForwardConfig\": {
+				\"TargetGroups\": [
+					{
+						\"TargetGroupArn\": \"%s\",
+						\"Weight\": 1
+					}
+				],
+				\"TargetGroupStickinessConfig\": {
+					\"Enabled\": false,
+					\"DurationSeconds\": 3600
+				}
+			}
+		}]`, targetGroupArn, targetGroupArn))
 	}
 	log.Debug(args)
 	if viper.GetBool("dummy") {
