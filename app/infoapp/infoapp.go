@@ -335,10 +335,10 @@ func Run() {
 			targetGroupForm := runFormTargetgroup(targetgroups)
 			if targetGroupForm.State == huh.StateCompleted {
 				tg := targetGroupForm.Get("targetgroup").(aws.TargetGroup)
-				if tg.Arn != "" {
-					config.targetGroup.Arn = tg.Arn
-					config.targetGroup.Name = tg.Name
-					config.targetGroupDescription = generateDescription(tg.Name, tg.Arn)
+				if tg.TargetGroupArn != "" {
+					config.targetGroup.Arn = tg.TargetGroupArn
+					config.targetGroup.Name = tg.TargetGroupName
+					config.targetGroupDescription = generateDescription(tg.TargetGroupName, tg.TargetGroupArn)
 				}
 			}
 		}

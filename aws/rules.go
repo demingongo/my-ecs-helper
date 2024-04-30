@@ -2,23 +2,24 @@ package aws
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/log"
 	"github.com/spf13/viper"
 )
 
 func CreateRule(filepath string, targetGroupArn string) (string, error) {
-	cmd := fmt.Sprintf("aws elbv2 create-rule --cli-input-json \"$(cat %s)\"", filepath)
+	var args []string
+	args = append(args, "elbv2", "create-rule", "--cli-input-json", fmt.Sprintf("$(cat %s)", filepath))
 	if targetGroupArn != "" {
-		action := fmt.Sprintf("--actions Type=forward,TargetGroupArn=%s", targetGroupArn)
-		cmd += " " + action
+		args = append(args, "--actions", fmt.Sprintf("Type=forward,TargetGroupArn=%s", targetGroupArn))
 	}
-	log.Debug(cmd)
+	log.Debug(args)
 	if viper.GetBool("dummy") {
-		return cmd, nil
+		return strings.Join(args, " "), nil
 	}
 
 	// @TODO
 
-	return cmd, nil
+	return strings.Join(args, " "), nil
 }

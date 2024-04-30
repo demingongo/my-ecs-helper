@@ -24,14 +24,14 @@ func generateFormTargetgroup(list []aws.TargetGroup) *huh.Form {
 	for _, tg := range list {
 		var arnText string
 
-		if tg.Arn != "" {
-			if len(tg.Arn) > arnTextMaxSize {
-				arnText += " (..." + tg.Arn[len(tg.Arn)-arnTextMaxSize:] + ")"
+		if tg.TargetGroupArn != "" {
+			if len(tg.TargetGroupArn) > arnTextMaxSize {
+				arnText += " (..." + tg.TargetGroupArn[len(tg.TargetGroupArn)-arnTextMaxSize:] + ")"
 			} else {
-				arnText += " (" + tg.Arn + ")"
+				arnText += " (" + tg.TargetGroupArn + ")"
 			}
 		}
-		options = append(options, huh.NewOption(tg.Name+arnText, tg))
+		options = append(options, huh.NewOption(tg.TargetGroupName+arnText, tg))
 	}
 
 	confirm := true

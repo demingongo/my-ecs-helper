@@ -9,24 +9,35 @@ import (
 )
 
 type TargetGroup struct {
-	Arn  string
-	Name string
+	TargetGroupArn  string
+	TargetGroupName string
+}
+
+type targetGroupsResponse struct {
+	TargetGroups []TargetGroup
 }
 
 func DescribeTargetGroups() ([]TargetGroup, error) {
 	options := []TargetGroup{}
-	cmd := "aws elbv2 describe-target-groups --output json --no-paginate"
-	log.Debug(cmd)
+	var args []string
+	args = append(args, "elbv2", "describe-target-groups", "--output", "json", "--no-paginate")
+	log.Debug(args)
 	if viper.GetBool("dummy") {
 		for i := 1; i <= 10; i += 1 {
 			arn := "arn:aws:elasticloadbalancing:us-west-2:123456789012:targetgroup/ecs-tg-" + strconv.Itoa(i) + "/73e2d6bc24d8a067"
 			name := "ecs-project-" + strconv.Itoa(i)
-			options = append(options, TargetGroup{Arn: arn, Name: name})
+			options = append(options, TargetGroup{TargetGroupArn: arn, TargetGroupName: name})
 		}
 		return options, nil
 	}
 
-	// @TODO
+	var resp targetGroupsResponse
+	_, err := execAWS(args, &resp)
+	if err != nil {
+		return options, err
+	}
+
+	options = resp.TargetGroups
 
 	return options, nil
 }
@@ -37,8 +48,8 @@ func CreateTargetGroup(filepath string) (TargetGroup, error) {
 	log.Debug(cmd)
 	if viper.GetBool("dummy") {
 		return TargetGroup{
-			Arn:  "arn:dummy",
-			Name: "dummy",
+			TargetGroupArn:  "arn:dummy",
+			TargetGroupName: "dummy",
 		}, nil
 	}
 
