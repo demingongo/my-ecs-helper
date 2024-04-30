@@ -11,41 +11,24 @@ type ContainerPortMapping struct {
 }
 
 type PortMapping struct {
-	ContainerPort int
-	HostPort      int
-	Name          string
+	ContainerPort int    `json:"containerPort"`
+	HostPort      int    `json:"hostPort"`
+	Name          string `json:"name"`
 }
 
 type ContainerDefinition struct {
-	Name         string
-	Image        string
-	PortMappings []PortMapping
+	Name         string        `json:"name"`
+	Image        string        `json:"image"`
+	PortMappings []PortMapping `json:"portMappings"`
 }
 
 type TaskDefinition struct {
-	TaskDefinitionArn    string
-	ContainerDefinitions []ContainerDefinition
-}
-
-type portMapping struct {
-	containerPort int
-	hostPort      int
-	name          string
-}
-
-type containerDefinition struct {
-	name         string
-	image        string
-	portMappings []PortMapping
-}
-
-type taskDefinition struct {
-	taskDefinitionArn    string
-	containerDefinitions []taskDefinition
+	TaskDefinitionArn    string                `json:"taskDefinitionArn"`
+	ContainerDefinitions []ContainerDefinition `json:"containerDefinitions"`
 }
 
 type describeTaskDefinitionResponse struct {
-	taskDefinition taskDefinition
+	TaskDefinition TaskDefinition `json:"taskDefinition"`
 }
 
 func DescribeTaskDefinition(taskDefinitionArn string) (TaskDefinition, error) {
