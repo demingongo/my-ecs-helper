@@ -45,7 +45,7 @@ func DescribeTargetGroups() ([]TargetGroup, error) {
 func CreateTargetGroup(filepath string) (TargetGroup, error) {
 	var result TargetGroup
 	var args []string
-	args = append(args, "elbv2", "create-target-group", "--output", "json", "--cli-input-json", fmt.Sprintf("$(cat %s)", filepath))
+	args = append(args, "elbv2", "create-target-group", "--output", "json", "--cli-input-json", fmt.Sprintf("file://%s", filepath))
 	log.Debug(args)
 	if viper.GetBool("dummy") {
 		return TargetGroup{
