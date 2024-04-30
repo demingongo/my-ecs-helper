@@ -27,8 +27,25 @@ type TaskDefinition struct {
 	ContainerDefinitions []ContainerDefinition
 }
 
+type portMapping struct {
+	containerPort int
+	hostPort      int
+	name          string
+}
+
+type containerDefinition struct {
+	name         string
+	image        string
+	portMappings []PortMapping
+}
+
+type taskDefinition struct {
+	taskDefinitionArn    string
+	containerDefinitions []taskDefinition
+}
+
 type describeTaskDefinitionResponse struct {
-	taskDefinition TaskDefinition
+	taskDefinition taskDefinition
 }
 
 func DescribeTaskDefinition(taskDefinitionArn string) (TaskDefinition, error) {
@@ -61,8 +78,9 @@ func DescribeTaskDefinition(taskDefinitionArn string) (TaskDefinition, error) {
 	if err != nil {
 		return result, err
 	}
+	log.Debug(resp)
 
-	result = resp.taskDefinition
+	//result = resp.taskDefinition
 
 	return result, nil
 }
