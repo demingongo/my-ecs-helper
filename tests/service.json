@@ -1,0 +1,5 @@
+{
+    "cluster": "cluster-name",
+    "serviceName": "dmz-web",
+    "taskDefinition": "arn:task-definition/taskdef-ci-dmz-web:5"
+}

@@ -14,14 +14,14 @@ func selectTargetGroupJSON(info string) string {
 	return value
 }
 
-func generateFormTargetgroup() *huh.Form {
+func generateFormTargetgroup(list []aws.TargetGroup) *huh.Form {
 	options := []huh.Option[aws.TargetGroup]{
 		huh.NewOption("(None)", aws.TargetGroup{}),
 	}
 
 	arnTextMaxSize := 12
 
-	for _, tg := range aws.DescribeTargetGroups() {
+	for _, tg := range list {
 		var arnText string
 
 		if tg.Arn != "" {
@@ -63,9 +63,9 @@ func generateFormTargetgroup() *huh.Form {
 	return form
 }
 
-func runFormTargetgroup() *huh.Form {
+func runFormTargetgroup(list []aws.TargetGroup) *huh.Form {
 
-	form := generateFormTargetgroup()
+	form := generateFormTargetgroup(list)
 	fModel := formmmodel.NewModel(formmmodel.ModelConfig{
 		Form:       form,
 		InfoBubble: info,

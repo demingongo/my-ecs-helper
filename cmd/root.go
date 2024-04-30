@@ -55,7 +55,11 @@ func init() {
 	// when this action is called directly.
 	//rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "verbose output")
+	rootCmd.PersistentFlags().Bool("dummy", false, "dummy run (no aws call)")
 
+	viper.BindPFlag("dummy", rootCmd.PersistentFlags().Lookup("dummy"))
 	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
+	viper.SetDefault("dummy", false)
 	viper.SetDefault("verbose", false)
+
 }

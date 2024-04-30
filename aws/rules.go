@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/log"
+	"github.com/spf13/viper"
 )
 
 func CreateRule(filepath string, targetGroupArn string) (string, error) {
@@ -13,5 +14,11 @@ func CreateRule(filepath string, targetGroupArn string) (string, error) {
 		cmd += " " + action
 	}
 	log.Debug(cmd)
+	if viper.GetBool("dummy") {
+		return cmd, nil
+	}
+
+	// @TODO
+
 	return cmd, nil
 }

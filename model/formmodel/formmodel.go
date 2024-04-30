@@ -18,30 +18,32 @@ type ModelConfig struct {
 }
 
 var (
-	// Status Bar.
+	/*
+		// Status Bar.
 
-	statusNugget = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Padding(0, 1)
+		statusNugget = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FFFDF5")).
+				Padding(0, 1)
 
-	statusBarStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#C1C6B2"}).
-			Background(lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#353533"})
+		statusBarStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#C1C6B2"}).
+				Background(lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#353533"})
 
-	statusStyle = lipgloss.NewStyle().
-			Inherit(statusBarStyle).
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Background(lipgloss.Color("#FF5F87")).
-			Padding(0, 1).
-			MarginRight(1)
+		statusStyle = lipgloss.NewStyle().
+				Inherit(statusBarStyle).
+				Foreground(lipgloss.Color("#FFFDF5")).
+				Background(lipgloss.Color("#FF5F87")).
+				Padding(0, 1).
+				MarginRight(1)
 
-	encodingStyle = statusNugget.Copy().
-			Background(lipgloss.Color("#A550DF")).
-			Align(lipgloss.Right)
+		encodingStyle = statusNugget.Copy().
+				Background(lipgloss.Color("#A550DF")).
+				Align(lipgloss.Right)
 
-	statusText = lipgloss.NewStyle().Inherit(statusBarStyle)
+		statusText = lipgloss.NewStyle().Inherit(statusBarStyle)
 
-	fishCakeStyle = statusNugget.Copy().Background(lipgloss.Color("#6124DF"))
+		fishCakeStyle = statusNugget.Copy().Background(lipgloss.Color("#6124DF"))
+	*/
 
 	// Page.
 
@@ -145,25 +147,27 @@ func (m Model) View() string {
 	}
 
 	// Status bar
-	{
-		w := lipgloss.Width
+	/*
+		{
+			w := lipgloss.Width
 
-		statusKey := statusStyle.Render("STATUS")
-		encoding := encodingStyle.Render("INFO")
-		fishCake := fishCakeStyle.Render("💾 My ECS helper")
-		statusVal := statusText.Copy().
-			Width(m.width - w(statusKey) - w(encoding) - w(fishCake)).
-			Render("Normal")
+			statusKey := statusStyle.Render("STATUS")
+			encoding := encodingStyle.Render("INFO")
+			fishCake := fishCakeStyle.Render("💾 My ECS helper")
+			statusVal := statusText.Copy().
+				Width(m.width - w(statusKey) - w(encoding) - w(fishCake)).
+				Render("Normal")
 
-		bar := lipgloss.JoinHorizontal(lipgloss.Top,
-			statusKey,
-			statusVal,
-			encoding,
-			fishCake,
-		)
+			bar := lipgloss.JoinHorizontal(lipgloss.Top,
+				statusKey,
+				statusVal,
+				encoding,
+				fishCake,
+			)
 
-		doc.WriteString(statusBarStyle.Width(m.width).Render(bar))
-	}
+			doc.WriteString(statusBarStyle.Width(m.width).Render(bar))
+		}
+	*/
 
 	if physicalWidth > 0 {
 		docStyle = docStyle.MaxWidth(physicalWidth)

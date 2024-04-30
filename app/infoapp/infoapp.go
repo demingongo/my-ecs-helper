@@ -23,10 +23,22 @@ type TargetGroupConfig struct {
 	Name     string // target group's name
 }
 
+func (tgc TargetGroupConfig) IsComplete() bool {
+	return (tgc.New && tgc.Filepath != "") || tgc.Arn != ""
+}
+
+type ServiceConfig struct {
+	Filepath       string // must be filled if New=true
+	Name           string // service's name
+	TaskDefinition string // task definition (containers)
+}
+
 type Config struct {
-	targetGroup TargetGroupConfig
-	rules       []string
-	service     string
+	targetGroup   TargetGroupConfig
+	rules         []string
+	service       ServiceConfig
+	containerName string
+	containerPort int
 
 	targetGroupDescription string
 	rulesDescription       string
@@ -190,7 +202,7 @@ func generateInfo() string {
 	if config.serviceDescription != "" {
 		serviceInfo = config.serviceDescription
 	} else {
-		serviceInfo = config.service
+		serviceInfo = config.service.Filepath
 	}
 
 	if len(tgInfo) == 0 {
@@ -234,7 +246,7 @@ func createLogger() *log.Logger {
 	return logger
 }
 
-func generateTargetGroupDescription(name string, filepath string) string {
+func generateDescription(name string, filepath string) string {
 
 	r := name
 
@@ -269,6 +281,18 @@ func process(logger *log.Logger) {
 			}
 		}
 	}
+
+	if len(config.service.Filepath) > 0 {
+		logger.Debug(fmt.Sprintf("create service \"%s\"", config.service.Name))
+		_, err := aws.CreateService(config.service.Filepath, aws.ServiceLoadBalancer{
+			TargetGroupArn: config.targetGroup.Arn,
+			ContainerName:  config.containerName,
+			ContainerPort:  config.containerPort,
+		})
+		if err != nil {
+			logger.Fatal("CreateTargetGroup", err)
+		}
+	}
 }
 
 func Run() {
@@ -298,19 +322,23 @@ func Run() {
 
 				config.targetGroup.Name = tgConf.GetString("targetGroupName")
 
-				config.targetGroupDescription = generateTargetGroupDescription(config.targetGroup.Name, config.targetGroup.Filepath)
+				config.targetGroupDescription = generateDescription(config.targetGroup.Name, config.targetGroup.Filepath)
 			}
 		}
 
 		// select-targetgroup
 		if operation == "select-targetgroup" {
-			targetGroupForm := runFormTargetgroup()
+			targetgroups, err := aws.DescribeTargetGroups()
+			if err != nil {
+				logger.Fatal(err)
+			}
+			targetGroupForm := runFormTargetgroup(targetgroups)
 			if targetGroupForm.State == huh.StateCompleted {
 				tg := targetGroupForm.Get("targetgroup").(aws.TargetGroup)
 				if tg.Arn != "" {
 					config.targetGroup.Arn = tg.Arn
 					config.targetGroup.Name = tg.Name
-					config.targetGroupDescription = generateTargetGroupDescription(tg.Name, tg.Arn)
+					config.targetGroupDescription = generateDescription(tg.Name, tg.Arn)
 				}
 			}
 		}
@@ -351,19 +379,47 @@ func Run() {
 		if operation == "create-targetgroup" || operation == "select-targetgroup" {
 			serviceForm := runFormService()
 			if serviceForm.State == huh.StateCompleted && serviceForm.GetBool("confirm") {
-				config.service = selectServiceJSON(info)
+				config.service.Filepath = selectServiceJSON(info)
 			}
 		} else if operation == "create-service" {
-			config.service = selectServiceJSON(info)
+			config.service.Filepath = selectServiceJSON(info)
 		}
-		if config.service == "" {
+		if config.service.Filepath == "" {
 			config.serviceDescription = "❌"
+		} else {
+			tgConf := viper.New()
+			tgConf.SetConfigFile(config.service.Filepath)
+			err := tgConf.ReadInConfig()
+			if err != nil {
+				logger.Fatal("Could not read file:", err)
+			}
+			config.service.Name = tgConf.GetString("serviceName")
+			config.service.TaskDefinition = tgConf.GetString("taskDefinition")
+			config.serviceDescription = generateDescription(config.service.Name, config.service.Filepath)
 		}
 		info = generateInfo()
 
+		// create load balancer for service
+		if config.service.TaskDefinition != "" && config.targetGroup.IsComplete() {
+			// select container and port
+			containers, err := aws.ListPortMapping(config.service.TaskDefinition)
+			if err != nil {
+				logger.Fatal(err)
+			}
+			if len(containers) > 0 {
+				lbForm := runFormLoadBalancer(containers)
+				if lbForm.State == huh.StateCompleted {
+					container := lbForm.Get("loadbalancer").(aws.ContainerPortMapping)
+					if container.Name != "" && container.PortMapping.ContainerPort > 0 {
+						config.containerName = container.Name
+						config.containerPort = container.PortMapping.ContainerPort
+					}
+				}
+			}
+		}
+
 		fmt.Println(info)
 
-		// @TODO processing
 		process(logger)
 	}
 

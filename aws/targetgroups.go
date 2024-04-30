@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/charmbracelet/log"
+	"github.com/spf13/viper"
 )
 
 type TargetGroup struct {
@@ -12,23 +13,36 @@ type TargetGroup struct {
 	Name string
 }
 
-func DescribeTargetGroups() []TargetGroup {
+func DescribeTargetGroups() ([]TargetGroup, error) {
 	options := []TargetGroup{}
 	cmd := "aws elbv2 describe-target-groups --output json --no-paginate"
 	log.Debug(cmd)
-	for i := 1; i <= 10; i += 1 {
-		arn := "arn:aws:elasticloadbalancing:us-west-2:123456789012:targetgroup/ecs-tg-" + strconv.Itoa(i) + "/73e2d6bc24d8a067"
-		name := "ecs-project-" + strconv.Itoa(i)
-		options = append(options, TargetGroup{Arn: arn, Name: name})
+	if viper.GetBool("dummy") {
+		for i := 1; i <= 10; i += 1 {
+			arn := "arn:aws:elasticloadbalancing:us-west-2:123456789012:targetgroup/ecs-tg-" + strconv.Itoa(i) + "/73e2d6bc24d8a067"
+			name := "ecs-project-" + strconv.Itoa(i)
+			options = append(options, TargetGroup{Arn: arn, Name: name})
+		}
+		return options, nil
 	}
-	return options
+
+	// @TODO
+
+	return options, nil
 }
 
 func CreateTargetGroup(filepath string) (TargetGroup, error) {
-	cmd := fmt.Sprintf("aws elbv2 create-target-group --cli-input-json \"$(cat %s)\"", filepath)
+	var r TargetGroup
+	cmd := fmt.Sprintf("aws elbv2 create-target-group --output json --cli-input-json \"$(cat %s)\"", filepath)
 	log.Debug(cmd)
-	return TargetGroup{
-		Arn:  "arn:dummy",
-		Name: "dummy",
-	}, nil
+	if viper.GetBool("dummy") {
+		return TargetGroup{
+			Arn:  "arn:dummy",
+			Name: "dummy",
+		}, nil
+	}
+
+	// @TODO
+
+	return r, nil
 }
