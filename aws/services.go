@@ -2,6 +2,7 @@ package aws
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/log"
 	"github.com/spf13/viper"
@@ -14,20 +15,21 @@ type ServiceLoadBalancer struct {
 }
 
 func CreateService(filepath string, loadBalancer ServiceLoadBalancer) (string, error) {
-	cmd := fmt.Sprintf("aws ecs create-service --output json --cli-input-json \"$(cat %s)\"", filepath)
+	var args []string
+	args = append(args, "ecs", "create-service", "--output", "json", "--cli-input-json", fmt.Sprintf("file://%s", filepath))
 	if loadBalancer.TargetGroupArn != "" && loadBalancer.ContainerName != "" {
-		action := fmt.Sprintf(
-			"--load-balancers targetGroupArn=%s,containerName=%s,containerPort=%d",
+		args = append(args, "--load-balancers", fmt.Sprintf(
+			"targetGroupArn=%s,containerName=%s,containerPort=%d",
 			loadBalancer.TargetGroupArn, loadBalancer.ContainerName, loadBalancer.ContainerPort,
-		)
-		cmd += " " + action
+		))
 	}
-	log.Debug(cmd)
+	log.Debug(args)
 	if viper.GetBool("dummy") {
-		return cmd, nil
+		return strings.Join(args, " "), nil
 	}
 
-	// @TODO
+	var resp any
+	stdout, err := execAWS(args, &resp)
 
-	return cmd, nil
+	return string(stdout), err
 }
