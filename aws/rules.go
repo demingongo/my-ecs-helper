@@ -10,7 +10,7 @@ import (
 
 func CreateRule(filepath string, targetGroupArn string) (string, error) {
 	var args []string
-	args = append(args, "elbv2", "create-rule", "--cli-input-json", fmt.Sprintf("\"$(cat %s)\"", filepath))
+	args = append(args, "elbv2", "create-rule", "--cli-input-json", fmt.Sprintf("file://%s", filepath))
 	if targetGroupArn != "" {
 		args = append(args, "--action", fmt.Sprintf("Type=forward,TargetGroupArn=%s", targetGroupArn))
 	}
