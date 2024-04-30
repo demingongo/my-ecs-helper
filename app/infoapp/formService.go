@@ -6,12 +6,12 @@ import (
 	formmmodel "github.com/demingongo/my-ecs-helper/model/formmodel"
 )
 
-func selectRuleJSON(info string, title string, dir string) string {
-	value := selectJSONFile(title, dir, info)
+func selectServiceJSON(info string) string {
+	value := selectJSONFile("Pick a service (.json):", "", info)
 	return value
 }
 
-func generateFormRules() *huh.Form {
+func generateFormService() *huh.Form {
 
 	confirm := true
 
@@ -19,7 +19,7 @@ func generateFormRules() *huh.Form {
 		huh.NewGroup(
 			huh.NewConfirm().
 				Key("confirm").
-				Title("Create rules?").
+				Title("Create a service?").
 				Value(&confirm),
 		),
 	).
@@ -29,9 +29,9 @@ func generateFormRules() *huh.Form {
 	return form
 }
 
-func runFormRules() *huh.Form {
+func runFormService() *huh.Form {
 
-	form := generateFormRules()
+	form := generateFormService()
 	fModel := formmmodel.NewModel(formmmodel.ModelConfig{
 		Form:       form,
 		InfoBubble: info,

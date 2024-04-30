@@ -4,8 +4,10 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"github.com/charmbracelet/log"
 	"github.com/demingongo/my-ecs-helper/app/infoapp"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // infoCmd represents the info command
@@ -19,6 +21,9 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		if viper.GetBool("verbose") {
+			log.SetLevel(log.DebugLevel)
+		}
 		infoapp.Run()
 	},
 }

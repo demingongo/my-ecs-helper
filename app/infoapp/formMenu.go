@@ -40,13 +40,13 @@ func generateFormMenu() *huh.Form {
 
 func runFormMenu() *huh.Form {
 
-	firstSelectForm := generateFormMenu()
-	firstSelect := formmmodel.NewModel(formmmodel.ModelConfig{
-		Form:       firstSelectForm,
+	form := generateFormMenu()
+	fModel := formmmodel.NewModel(formmmodel.ModelConfig{
+		Form:       form,
 		InfoBubble: info,
 	}).Width(width)
 
-	tea.NewProgram(&firstSelect).Run()
+	tea.NewProgram(&fModel).Run()
 
-	return firstSelectForm
+	return form
 }

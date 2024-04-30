@@ -377,12 +377,21 @@ func max(a, b int) int {
 }
 */
 
+type TargetGroupConfig struct {
+	New      bool   // must create a target group if it's true
+	Filepath string // must be filled if New=true
+	Arn      string // target group's arn
+	Name     string // target group's name
+}
+
 type Config struct {
-	targetGroup            string
+	targetGroup TargetGroupConfig
+	rules       []string
+	service     string
+
 	targetGroupDescription string
-	createTargetGroup      bool
-	rules                  []string
-	service                string
+	rulesDescription       string
+	serviceDescription     string
 }
 
 const (
@@ -630,14 +639,42 @@ func selectJSONFile(title string, currentDirectory string, info string) string {
 
 func generateInfo() string {
 
-	tgInfo := config.targetGroup
+	var (
+		tgInfo      string
+		rulesInfo   string
+		serviceInfo string
+	)
 
 	if config.targetGroupDescription != "" {
 		tgInfo = config.targetGroupDescription
+	} else {
+		if config.targetGroup.New {
+			tgInfo = config.targetGroup.Filepath
+		} else {
+			tgInfo = config.targetGroup.Name
+		}
+	}
+
+	if config.rulesDescription != "" {
+		rulesInfo = config.rulesDescription
+	} else {
+		rulesInfo = strings.Join(config.rules, ", ")
+	}
+
+	if config.serviceDescription != "" {
+		serviceInfo = config.serviceDescription
+	} else {
+		serviceInfo = config.service
 	}
 
 	if len(tgInfo) == 0 {
-		tgInfo = subtleText("-❌")
+		tgInfo = subtleText("-")
+	}
+	if len(rulesInfo) == 0 {
+		rulesInfo = subtleText("-")
+	}
+	if len(serviceInfo) == 0 {
+		serviceInfo = subtleText("-")
 	}
 
 	content := lipgloss.JoinVertical(lipgloss.Left,
@@ -645,9 +682,9 @@ func generateInfo() string {
 		subtitleStyle.Render("Target group"),
 		tgInfo,
 		subtitleStyle.Render("Rules"),
-		strings.Join(config.rules, ", "),
+		rulesInfo,
 		subtitleStyle.Render("Service"),
-		config.service,
+		serviceInfo,
 	)
 
 	return infoStyle.Render(content)
@@ -666,6 +703,7 @@ func createLogger() *log.Logger {
 	styles.Values["err"] = lipgloss.NewStyle().Bold(true)
 	logger := log.New(os.Stderr)
 	logger.SetStyles(styles)
+	logger.SetLevel(log.GetLevel())
 
 	return logger
 }
@@ -687,6 +725,26 @@ func generateTargetGroupDescription(name string, filepath string) string {
 	return r
 }
 
+func process(logger *log.Logger) {
+	if config.targetGroup.New && config.targetGroup.Filepath != "" {
+		logger.Debug(fmt.Sprintf("create target group \"%s\"", config.targetGroup.Name))
+		_, err := aws.CreateTargetGroup(config.targetGroup.Filepath)
+		if err != nil {
+			logger.Fatal("CreateTargetGroup", err)
+		}
+	}
+
+	if len(config.rules) > 0 {
+		logger.Debug(fmt.Sprintf("create rules for target group \"%s\"", config.targetGroup.Name))
+		for _, v := range config.rules {
+			_, err := aws.CreateRule(v, config.targetGroup.Arn)
+			if err != nil {
+				logger.Fatal("CreateRule", err)
+			}
+		}
+	}
+}
+
 func Run() {
 
 	logger := createLogger()
@@ -701,20 +759,21 @@ func Run() {
 
 		// create-targetgroup
 		if operation == "create-targetgroup" {
-			config.targetGroup = selectTargetGroupJSON(info)
+			config.targetGroup.New = true
+			config.targetGroup.Filepath = selectTargetGroupJSON(info)
 
-			if config.targetGroup != "" {
+			if config.targetGroup.Filepath != "" {
 				tgConf := viper.New()
-				tgConf.SetConfigFile(config.targetGroup)
+				tgConf.SetConfigFile(config.targetGroup.Filepath)
 				err := tgConf.ReadInConfig()
 				if err != nil {
 					logger.Fatal("Could not read file:", err)
 				}
 
-				config.targetGroupDescription = generateTargetGroupDescription(tgConf.GetString("targetGroupName"), config.targetGroup)
-				config.createTargetGroup = true
+				config.targetGroup.Name = tgConf.GetString("targetGroupName")
+
+				config.targetGroupDescription = generateTargetGroupDescription(config.targetGroup.Name, config.targetGroup.Filepath)
 			}
-			info = generateInfo()
 		}
 
 		// select-targetgroup
@@ -723,39 +782,63 @@ func Run() {
 			if targetGroupForm.State == huh.StateCompleted {
 				tg := targetGroupForm.Get("targetgroup").(aws.TargetGroup)
 				if tg.Arn != "" {
-					config.targetGroup = tg.Arn
+					config.targetGroup.Arn = tg.Arn
+					config.targetGroup.Name = tg.Name
 					config.targetGroupDescription = generateTargetGroupDescription(tg.Name, tg.Arn)
 				}
-				info = generateInfo()
 			}
 		}
+		if config.targetGroupDescription == "" {
+			config.targetGroupDescription = "❌"
+		}
+		info = generateInfo()
 
-		// @TODO create rules: create-targetgroup || select-targetgroup
+		// create rules
 		if operation == "create-targetgroup" || operation == "select-targetgroup" {
-			var searchDir string
-			var maxRules = 5
-			for len(config.rules) < 5 {
-				title := fmt.Sprintf("Pick a rule (.json) (%d/%d):", len(config.rules), maxRules)
-				file := selectRuleJSON(info, title, searchDir)
-				if len(file) > 0 {
-					if slices.Contains(config.rules, file) {
-						break
+			rulesForm := runFormRules()
+			if rulesForm.State == huh.StateCompleted && rulesForm.GetBool("confirm") {
+				var searchDir string
+				var maxRules = 5
+				for len(config.rules) < 5 {
+					title := fmt.Sprintf("Pick a rule (.json) (%d/%d):", len(config.rules), maxRules)
+					file := selectRuleJSON(info, title, searchDir)
+					if len(file) > 0 {
+						if slices.Contains(config.rules, file) {
+							break
+						} else {
+							config.rules = append(config.rules, file)
+							searchDir = filepath.Dir(file)
+							info = generateInfo()
+						}
 					} else {
-						config.rules = append(config.rules, file)
-						searchDir = filepath.Dir(file)
-						info = generateInfo()
+						break
 					}
-				} else {
-					break
 				}
 			}
 		}
+		if len(config.rules) == 0 {
+			config.rulesDescription = "❌"
+			info = generateInfo()
+		}
 
-		// @TODO create service: create-service || create-targetgroup || select-targetgroup
+		// create service
+		if operation == "create-targetgroup" || operation == "select-targetgroup" {
+			serviceForm := runFormService()
+			if serviceForm.State == huh.StateCompleted && serviceForm.GetBool("confirm") {
+				config.service = selectServiceJSON(info)
+			}
+		} else if operation == "create-service" {
+			config.service = selectServiceJSON(info)
+		}
+		if config.service == "" {
+			config.serviceDescription = "❌"
+		}
+		info = generateInfo()
 
 		fmt.Println(info)
 
 		// @TODO processing
+		process(logger)
 	}
 
 	fmt.Println("Done")

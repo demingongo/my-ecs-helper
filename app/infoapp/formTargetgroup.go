@@ -65,13 +65,13 @@ func generateFormTargetgroup() *huh.Form {
 
 func runFormTargetgroup() *huh.Form {
 
-	firstSelectForm := generateFormTargetgroup()
-	firstSelect := formmmodel.NewModel(formmmodel.ModelConfig{
-		Form:       firstSelectForm,
+	form := generateFormTargetgroup()
+	fModel := formmmodel.NewModel(formmmodel.ModelConfig{
+		Form:       form,
 		InfoBubble: info,
 	}).Width(width)
 
-	tea.NewProgram(&firstSelect).Run()
+	tea.NewProgram(&fModel).Run()
 
-	return firstSelectForm
+	return form
 }
