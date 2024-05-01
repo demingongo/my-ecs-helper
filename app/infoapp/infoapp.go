@@ -9,6 +9,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/huh/spinner"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/demingongo/my-ecs-helper/aws"
@@ -270,7 +271,17 @@ func generateDescription(name string, filepath string) string {
 func process(logger *log.Logger) {
 	if config.targetGroup.IsNew() {
 		logger.Debug(fmt.Sprintf("create target group \"%s\"", config.targetGroup.Name))
-		result, err := aws.CreateTargetGroup(config.targetGroup.Filepath)
+		var (
+			result aws.TargetGroup
+			err    error
+		)
+		_ = spinner.New().Type(spinner.Meter).
+			Title(fmt.Sprintf(" Creating target group \"%s\"...", config.targetGroup.Name)).
+			Action(func() {
+				result, err = aws.CreateTargetGroup(config.targetGroup.Filepath)
+			}).
+			Run()
+
 		if err != nil {
 			logger.Fatal("CreateTargetGroup", err)
 		}
@@ -279,8 +290,14 @@ func process(logger *log.Logger) {
 
 	if len(config.rules) > 0 {
 		logger.Debug(fmt.Sprintf("create rules for target group \"%s\"", config.targetGroup.Name))
-		for _, v := range config.rules {
-			_, err := aws.CreateRule(v, config.targetGroup.Arn)
+		for i, v := range config.rules {
+			var err error
+			_ = spinner.New().Type(spinner.Meter).
+				Title(fmt.Sprintf(" Creating rules (%d/%d)...", i+1, len(config.rules))).
+				Action(func() {
+					_, err = aws.CreateRule(v, config.targetGroup.Arn)
+				}).
+				Run()
 			if err != nil {
 				logger.Fatal("CreateRule", err)
 			}
@@ -289,11 +306,17 @@ func process(logger *log.Logger) {
 
 	if len(config.service.Filepath) > 0 {
 		logger.Debug(fmt.Sprintf("create service \"%s\"", config.service.Name))
-		_, err := aws.CreateService(config.service.Filepath, aws.ServiceLoadBalancer{
-			TargetGroupArn: config.targetGroup.Arn,
-			ContainerName:  config.containerName,
-			ContainerPort:  config.containerPort,
-		})
+		var err error
+		_ = spinner.New().Type(spinner.Meter).
+			Title(fmt.Sprintf(" Creating service \"%s\"...", config.service.Name)).
+			Action(func() {
+				_, err = aws.CreateService(config.service.Filepath, aws.ServiceLoadBalancer{
+					TargetGroupArn: config.targetGroup.Arn,
+					ContainerName:  config.containerName,
+					ContainerPort:  config.containerPort,
+				})
+			}).
+			Run()
 		if err != nil {
 			logger.Fatal("CreateTargetGroup", err)
 		}
@@ -333,10 +356,20 @@ func Run() {
 
 		// select-targetgroup
 		if operation == "select-targetgroup" {
-			targetgroups, err := aws.DescribeTargetGroups()
+			var (
+				targetgroups []aws.TargetGroup
+				err          error
+			)
+			_ = spinner.New().Type(spinner.Globe).
+				Title(" Searching target groups...").
+				Action(func() {
+					targetgroups, err = aws.DescribeTargetGroups()
+				}).
+				Run()
 			if err != nil {
 				logger.Fatal(err)
 			}
+
 			targetGroupForm := runFormTargetgroup(targetgroups)
 			if targetGroupForm.State == huh.StateCompleted {
 				tg := targetGroupForm.Get("targetgroup").(aws.TargetGroup)
@@ -407,7 +440,16 @@ func Run() {
 		// create load balancer for service
 		if config.service.TaskDefinition != "" && config.targetGroup.IsComplete() {
 			// select container and port
-			containers, err := aws.ListPortMapping(config.service.TaskDefinition)
+			var (
+				containers []aws.ContainerPortMapping
+				err        error
+			)
+			_ = spinner.New().Type(spinner.Points).
+				Title(" Checking task definition containers...").
+				Action(func() {
+					containers, err = aws.ListPortMapping(config.service.TaskDefinition)
+				}).
+				Run()
 			if err != nil {
 				logger.Fatal(err)
 			}

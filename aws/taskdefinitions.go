@@ -37,6 +37,7 @@ func DescribeTaskDefinition(taskDefinitionArn string) (TaskDefinition, error) {
 	args = append(args, "ecs", "describe-task-definition", "--output", "json", "--no-paginate", "--task-definition", taskDefinitionArn)
 	log.Debug(args)
 	if viper.GetBool("dummy") {
+		sleep(2)
 		result = TaskDefinition{
 			TaskDefinitionArn: taskDefinitionArn,
 			ContainerDefinitions: []ContainerDefinition{

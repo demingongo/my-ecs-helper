@@ -16,6 +16,7 @@ func CreateRule(filepath string, targetGroupArn string) (string, error) {
 	}
 	log.Debug(args)
 	if viper.GetBool("dummy") {
+		sleep(1)
 		return strings.Join(args, " "), nil
 	}
 

@@ -25,6 +25,7 @@ func CreateService(filepath string, loadBalancer ServiceLoadBalancer) (string, e
 	}
 	log.Debug(args)
 	if viper.GetBool("dummy") {
+		sleep(1)
 		return strings.Join(args, " "), nil
 	}
 
