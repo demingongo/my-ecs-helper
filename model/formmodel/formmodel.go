@@ -11,10 +11,11 @@ import (
 )
 
 type ModelConfig struct {
-	Title      string
-	Key        string
-	InfoBubble string
-	Form       *huh.Form
+	Title        string
+	Key          string
+	InfoBubble   string
+	Form         *huh.Form
+	VerticalMode bool
 }
 
 var (
@@ -51,12 +52,13 @@ var (
 )
 
 type Model struct {
-	form       *huh.Form // huh.Form is just a tea.Model
-	quitting   bool
-	infoBubble string
-	key        string
-	width      int
-	State      huh.FormState
+	form         *huh.Form // huh.Form is just a tea.Model
+	quitting     bool
+	infoBubble   string
+	key          string
+	width        int
+	verticalMode bool
+	State        huh.FormState
 }
 
 func NewModel(config ModelConfig) Model {
@@ -66,6 +68,8 @@ func NewModel(config ModelConfig) Model {
 		State: huh.StateNormal,
 
 		infoBubble: config.InfoBubble,
+
+		verticalMode: config.VerticalMode,
 
 		// @TODO: will be used in a function
 		// to know what was updated
@@ -137,12 +141,16 @@ func (m Model) View() string {
 
 		// Form / Info
 		{
-			if m.infoBubble != "" && (m.width == 0 || (m.width > 0 && physicalWidth >= m.width*4/5)) {
+			if (m.verticalMode && m.infoBubble != "") || (m.infoBubble != "" && (m.width == 0 || (m.width > 0 && physicalWidth >= m.width*4/5))) {
 				infoView = m.infoBubble
 			}
 		}
 
-		doc.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, formView, infoView))
+		if m.verticalMode {
+			doc.WriteString(lipgloss.JoinVertical(lipgloss.Top, infoView, formView))
+		} else {
+			doc.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, formView, infoView))
+		}
 		doc.WriteString("\n\n")
 	}
 

@@ -12,7 +12,8 @@ func generateFormMenu() *huh.Form {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
-				Title("What do we do:").
+				Title("What to do:").
+				Description("Steps to create a service").
 				Key("operation").
 				Options(
 					huh.NewOption("Create a target group", "create-targetgroup"),

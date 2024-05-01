@@ -48,6 +48,10 @@ type Config struct {
 	targetGroupDescription string
 	rulesDescription       string
 	serviceDescription     string
+
+	targetGroupLogo string
+	rulesLogo       string
+	serviceLogo     string
 }
 
 type filepickerStyleStruct struct {
@@ -73,6 +77,11 @@ var (
 	info   string
 
 	theme = huh.ThemeBase()
+
+	logoEmpty   = "" //"ᶻ 𝗓 𐰁"
+	logoSuccess = "✔️"
+	logoError   = "❌"
+	logoInfo    = "" //"🛈"
 
 	subtle  = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
 	special = lipgloss.AdaptiveColor{Light: "230", Dark: "#010102"}
@@ -111,48 +120,11 @@ var (
 		selected:  lipgloss.NewStyle().Foreground(lipgloss.Color("6")),
 		symlink:   lipgloss.NewStyle().Foreground(lipgloss.Color("4")).Italic(true),
 	}
-
-	/*
-		// Summary block.
-		summaryStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("#bd93f9")).
-				BorderTop(true).
-				BorderLeft(true).
-				BorderRight(true).
-				BorderBottom(true).
-				Width(summaryWidth)
-
-		// Status Bar.
-
-		statusNugget = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#FFFDF5")).
-				Padding(0, 1)
-
-		statusBarStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#C1C6B2"}).
-				Background(lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#353533"})
-
-		statusStyle = lipgloss.NewStyle().
-				Inherit(statusBarStyle).
-				Foreground(lipgloss.Color("#FFFDF5")).
-				Background(lipgloss.Color("#FF5F87")).
-				Padding(0, 1).
-				MarginRight(1)
-
-		encodingStyle = statusNugget.Copy().
-				Background(lipgloss.Color("#A550DF")).
-				Align(lipgloss.Right)
-
-		statusText = lipgloss.NewStyle().Inherit(statusBarStyle)
-
-		fishCakeStyle = statusNugget.Copy().Background(lipgloss.Color("#6124DF"))
-
-		// Page.
-
-		docStyle = lipgloss.NewStyle().Padding(1, 2, 1, 2)
-	*/
 )
+
+func isProcessable() bool {
+	return config.targetGroup.IsComplete() || len(config.rules) > 0 || config.service.Filepath != ""
+}
 
 func selectJSONFile(title string, currentDirectory string, info string) string {
 	m := filepickermodel.NewFilepickerModel(filepickermodel.FilepickerModelConfig{
@@ -222,11 +194,11 @@ func generateInfo() string {
 
 	content := lipgloss.JoinVertical(lipgloss.Left,
 		titleStyle.Render("SUMMARY"),
-		subtitleStyle.Render("Target group"),
+		subtitleStyle.Render("Target group "+config.targetGroupLogo),
 		tgInfo,
-		subtitleStyle.Render("Rules"),
+		subtitleStyle.Render("Rules "+config.rulesLogo),
 		rulesInfo,
-		subtitleStyle.Render("Service"),
+		subtitleStyle.Render("Service "+config.serviceLogo),
 		serviceInfo,
 	)
 
@@ -283,9 +255,13 @@ func process(logger *log.Logger) {
 			Run()
 
 		if err != nil {
+			config.targetGroupLogo = logoError
+			info = generateInfo()
+			fmt.Println(info)
 			logger.Fatal("CreateTargetGroup", err)
 		}
 		config.targetGroup.Arn = result.TargetGroupArn
+		config.targetGroupLogo = logoSuccess
 	}
 
 	if len(config.rules) > 0 {
@@ -299,9 +275,13 @@ func process(logger *log.Logger) {
 				}).
 				Run()
 			if err != nil {
+				config.rulesLogo = logoError
+				info = generateInfo()
+				fmt.Println(info)
 				logger.Fatal("CreateRule", err)
 			}
 		}
+		config.rulesLogo = logoSuccess
 	}
 
 	if len(config.service.Filepath) > 0 {
@@ -318,9 +298,16 @@ func process(logger *log.Logger) {
 			}).
 			Run()
 		if err != nil {
-			logger.Fatal("CreateTargetGroup", err)
+			config.serviceLogo = logoError
+			info = generateInfo()
+			fmt.Println(info)
+			logger.Fatal("CreateService", err)
 		}
+		config.serviceLogo = logoSuccess
 	}
+
+	info = generateInfo()
+	fmt.Println(info)
 }
 
 func Run() {
@@ -377,11 +364,12 @@ func Run() {
 					config.targetGroup.Arn = tg.TargetGroupArn
 					config.targetGroup.Name = tg.TargetGroupName
 					config.targetGroupDescription = generateDescription(tg.TargetGroupName, tg.TargetGroupArn)
+					config.targetGroupLogo = logoInfo
 				}
 			}
 		}
 		if config.targetGroupDescription == "" {
-			config.targetGroupDescription = "❌"
+			config.targetGroupLogo = logoEmpty
 		}
 		info = generateInfo()
 
@@ -409,7 +397,7 @@ func Run() {
 			}
 		}
 		if len(config.rules) == 0 {
-			config.rulesDescription = "❌"
+			config.rulesLogo = logoEmpty
 			info = generateInfo()
 		}
 
@@ -423,7 +411,7 @@ func Run() {
 			config.service.Filepath = selectServiceJSON(info)
 		}
 		if config.service.Filepath == "" {
-			config.serviceDescription = "❌"
+			config.serviceLogo = logoEmpty
 		} else {
 			tgConf := viper.New()
 			tgConf.SetConfigFile(config.service.Filepath)
@@ -465,9 +453,13 @@ func Run() {
 			}
 		}
 
-		fmt.Println(info)
+		//fmt.Println(info)
 
-		process(logger)
+		if isProcessable() {
+			if form := runFormProcess(); form.State == huh.StateCompleted && form.GetBool("confirm") {
+				process(logger)
+			}
+		}
 	}
 
 	fmt.Println("Done")
